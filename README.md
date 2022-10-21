@@ -9,13 +9,13 @@ It has less than 40 dependencies in total.
 1. Install [the Rust toolchain](https://rust-lang.org/)
 2. Get insight:
 
-```txt
+```text
 $ cargo install insight
 ```
 
 3. Start the server:
 
-```txt
+```text
 $ insight -l 0.0.0.0:9090
 ```
 
