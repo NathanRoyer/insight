@@ -1,0 +1,95 @@
+html {
+    background: #222;
+    height: 100%;
+}
+
+body {
+    background: #333;
+    color: #eee;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+    min-height: 100%;
+    font-size: 16px;
+}
+
+@media (min-width: 1000px) {
+    body {
+        width: 680px;
+        border-right: 1px solid grey;
+        border-left: 1px solid grey;
+    }
+}
+
+#viewer {
+    padding: 0 16px;
+}
+
+img {
+    width: 100%;
+    max-height: 30vh;
+    object-fit: contain;
+}
+
+body > #markdown {
+    height: 0;
+    flex-grow: 1;
+    resize: none;
+    padding: 16px;
+}
+
+.gallery {
+    display: flex;
+}
+
+.gallery * {
+    width: 0%;
+    flex-grow: 1;
+    display: flex;
+    object-fit: contain;
+}
+
+.gallery > *:hover {
+    opacity: 0.8;
+    cursor: pointer;
+}
+
+#editor {
+    display: flex;
+    padding: 0;
+    border-bottom: 1px solid grey;
+    justify-content: center;
+}
+
+#editor > * {
+    padding: 0.5em;
+    line-height: 1em;
+    border-right: 1px solid grey;
+}
+
+#editor > :first-child {
+    border-left: 1px solid grey;
+}
+
+input, button, a, textarea {
+    border: 0;
+    margin: 0;
+    border-radius: 0;
+    font-size: inherit;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    resize: vertical;
+}
+
+body > *:not(#editor) {
+    margin: 10px 0;
+}
+
+button:hover {
+    background: grey;
+}
+
+a {
+    color: inherit;
+}
