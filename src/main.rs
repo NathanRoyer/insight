@@ -12,6 +12,7 @@ use pulldown_cmark::html;
 
 use html_escape::encode_text;
 use base64::encode;
+use lazy_static::lazy_static;
 
 use json::parse;
 use json::object;
@@ -61,9 +62,14 @@ fn check_and_update(new_json: &str) -> Option<()> {
 }
 
 const STYLESHEET: &'static str = include_str!("style.css");
+const SVG_FAVICON: &'static str = include_str!("favicon.svg");
 const EDITOR_SCRIPT: &'static str = include_str!("editor.js");
 const INITIAL_MARKDOWN: &'static str = include_str!("initial.md");
 const INITIAL_HOMEPAGE: &'static str = include_str!("initial-homepage.md");
+
+lazy_static! {
+    static ref SVG_FAVICON_B64: String = encode(SVG_FAVICON);
+}
 
 fn view(post: &str) -> Option<String> {
     if post.chars().all(char::is_alphanumeric) {
@@ -95,11 +101,13 @@ fn view(post: &str) -> Option<String> {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,{}">
         <title>{}</title>
         <style>{}</style>
     </head>
     <body id="viewer">{}</body>
 </html>"#,
+           SVG_FAVICON_B64.as_str(),
             encode_text(&title),
             STYLESHEET,
             body,
@@ -155,6 +163,7 @@ fn edit(post: &str, key: &str) -> Option<String> {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,{}">
         <title>Editor - i.l0.pm</title>
         <style>{}</style>
     </head>
@@ -171,6 +180,7 @@ fn edit(post: &str, key: &str) -> Option<String> {
         <textarea id="markdown"></textarea>
     </body>
 </html>"#,
+                    SVG_FAVICON_B64.as_str(),
                     STYLESHEET,
                     &encode(&content),
                     EDITOR_SCRIPT,
