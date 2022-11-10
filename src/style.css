@@ -22,7 +22,7 @@ body {
 
 @media (prefers-color-scheme: no-preference), (prefers-color-scheme: light) {
     html { background: #ccc; }
-    body { background: #d9d9d9; color: #333; }
+    body { background: #eee; color: #333; }
     #dark-theme { display: none; }
 }
 
