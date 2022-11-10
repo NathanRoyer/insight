@@ -4,6 +4,8 @@
 
 It has less than 40 dependencies in total.
 
+CSS media queries are used to automatically select the UI theme (light/dark).
+
 ### Setup
 
 1. Install [the Rust toolchain](https://rust-lang.org/)

@@ -1,16 +1,35 @@
 html {
-    background: #222;
     height: 100%;
 }
 
 body {
-    background: #333;
-    color: #eee;
     display: flex;
     flex-direction: column;
     margin: 0 auto;
     min-height: 100%;
     font-size: 16px;
+}
+
+#spacer {
+    flex-grow: 1;
+}
+
+#dark-theme, #light-theme {
+    font-size: 0.9em;
+    text-align: center;
+    color: grey;
+}
+
+@media (prefers-color-scheme: no-preference), (prefers-color-scheme: light) {
+    html { background: #ccc; }
+    body { background: #d9d9d9; color: #333; }
+    #dark-theme { display: none; }
+}
+
+@media (prefers-color-scheme: dark) {
+    html { background: #111; }
+    body { background: #222; color: #eee; }
+    #light-theme { display: none; }
 }
 
 @media (min-width: 1000px) {
@@ -22,7 +41,7 @@ body {
 }
 
 #viewer {
-    padding: 0 16px;
+    padding: 0 20px;
 }
 
 img {

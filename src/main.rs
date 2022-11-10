@@ -105,7 +105,12 @@ fn view(post: &str) -> Option<String> {
         <title>{}</title>
         <style>{}</style>
     </head>
-    <body id="viewer">{}</body>
+    <body id="viewer">
+        {}
+        <div id="spacer"></div>
+        <p id="light-theme">[theme: light]</p>
+        <p id="dark-theme">[theme: dark]</p>
+    </body>
 </html>"#,
            SVG_FAVICON_B64.as_str(),
             encode_text(&title),
