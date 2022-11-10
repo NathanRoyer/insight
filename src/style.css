@@ -44,6 +44,10 @@ body {
     padding: 0 20px;
 }
 
+#viewer > * {
+    margin: 10px 0;
+}
+
 img {
     width: 100%;
     max-height: 30vh;
@@ -99,10 +103,6 @@ input, button, a, textarea {
     color: inherit;
     font-family: inherit;
     resize: vertical;
-}
-
-body > *:not(#editor) {
-    margin: 10px 0;
 }
 
 button:hover {
