@@ -105,11 +105,15 @@ fn view(post: &str) -> Option<String> {
         <title>{}</title>
         <style>{}</style>
     </head>
-    <body id="viewer">
-        {}
-        <div id="spacer"></div>
-        <p id="light-theme">[theme: light]</p>
-        <p id="dark-theme">[theme: dark]</p>
+    <body>
+        <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
+        <div id="themed">
+            <div id="centered" class="viewer">
+                {}
+                <div id="spacer"></div>
+                <p>[powered by <a href="https://lib.rs/crates/insight">insight</a>]</p>
+            </div>
+        </div>
     </body>
 </html>"#,
            SVG_FAVICON_B64.as_str(),
@@ -175,14 +179,19 @@ fn edit(post: &str, key: &str) -> Option<String> {
     <body onload="init();">
         <script>let post = '{}';</script>
         <script>{}</script>
-        <div id="editor">
-            <button id="title-button">Title</button>
-            <button id="image-button">Image</button>
-            <button id="link-button">Link</button>
-            <button id="list-button">List</button>
-            <button id="view-button">View ⬀</button>
+        <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
+        <div id="themed">
+            <div id="centered">
+                <div id="editor">
+                    <button id="title-button">Title</button>
+                    <button id="image-button">Image</button>
+                    <button id="link-button">Link</button>
+                    <button id="list-button">List</button>
+                    <button id="view-button">View ⬀</button>
+                </div>
+                <textarea id="markdown"></textarea>
+            </div>
         </div>
-        <textarea id="markdown"></textarea>
     </body>
 </html>"#,
                     SVG_FAVICON_B64.as_str(),

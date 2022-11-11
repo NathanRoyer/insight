@@ -4,7 +4,7 @@
 
 It has less than 40 dependencies in total.
 
-CSS media queries are used to automatically select the UI theme (light/dark).
+CSS media queries are used to automatically select the UI theme (light/dark), but there is also a theme switch on each page.
 
 ### Setup
 
