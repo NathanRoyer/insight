@@ -23,16 +23,24 @@ let viewButtonNormalText;
 let markdownEntry;
 let saved = true;
 let saving = false;
+let email;
+
+function api_post(path, body, callback) {
+    let request = new XMLHttpRequest();
+    request.responseType = 'text';
+    request.open('POST', path, true);
+    request.onreadystatechange = () => {
+        if (request.readyState === XMLHttpRequest.DONE) callback(request);
+    };
+    request.send(body);
+}
 
 function save() {
     saving = true;
-    let request = new XMLHttpRequest();
     viewButton.innerText = 'Saving...';
     viewButton.disabled = true;
-    request.responseType = 'text';
-    request.open('POST', '/update', true);
 
-    request.onreadystatechange = function() {
+    api_post('/update', JSON.stringify(post), request => {
         if (request.status != 200) {
             console.error(request.responseText);
             alert('Error while saving; details in web tools.');
@@ -41,9 +49,7 @@ function save() {
             viewButton.disabled = false;
             saving = false;
         }
-    }
-
-    request.send(JSON.stringify(post));
+    });
 }
 
 function periodicCheck() {
@@ -62,24 +68,52 @@ function setButtonCallback(btn, callback) {
     button.addEventListener('click', callback);
 }
 
-function insert(markdown) {
-    let cursor = markdownEntry.selectionStart;
-    let before = markdownEntry.value.substring(0, cursor);
-    let after = markdownEntry.value.substring(cursor);
-    markdownEntry.value = before + markdown + after;
+function protect_post(token) {
+    let body = post.key + token + email;
+    api_post('/' + post.post + '/protect', body, request => {
+        if (request.status == 200) {
+            document.location = '/' + post.post + '/' + request.responseText;
+        } else {
+            alert('Error: ' + request.responseText);
+        }
+    });
+}
+
+function check_code(msg) {
+    let code = prompt(msg, '');
+    if (code) {
+        api_post('/check-email-code', code + email, request => {
+            if (request.status == 200) {
+                protect_post(request.responseText);
+            } else {
+                alert('Error: ' + request.responseText);
+            }
+        });
+    }
+}
+
+function protect_get_email() {
+    email = prompt('Enter your email:', '');
+    if (email) {
+        api_post('/send-email-code-create', email, request => {
+            if (request.status == 200) check_code(request.responseText);
+            else alert('Error: ' + request.responseText);
+        });
+    }
 }
 
 function init() {
     post = JSON.parse(atob(post));
     viewButton = document.getElementById('view-button');
     viewButtonNormalText = viewButton.innerText;
+
     markdownEntry = document.getElementById('markdown');
     markdownEntry.value = post.content;
 
-    setButtonCallback('title', () => insert('\n\n# My Title\n\n'));
-    setButtonCallback('image', () => insert('\n\n![label](https://image-url)\n\n'));
-    setButtonCallback('link', () => insert('\n\n[label](https://link.com)\n\n'));
-    setButtonCallback('list', () => insert('\n\n- Item 1\n- Item 2\n Item 3\n\n'));
+    let protectButton = document.getElementById('protect-button');
+    if (post.author) protectButton.remove();
+    else protectButton.addEventListener('click', protect_get_email);
+
     setButtonCallback('view', () => open('/' + post.post, '_blank'));
 
     periodicCheck();
