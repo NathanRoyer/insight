@@ -359,7 +359,7 @@ fn send_email_code(body: String, mailer: &Mailer, create: bool) -> Option<String
     let timestamp = value["code-created"].as_u64()?;
 
     let elapsed = elapsed_seconds_since(timestamp)?;
-    if true {//elapsed > FIVE_MINUTES {
+    if elapsed > FIVE_MINUTES {
         let code = six_digit_code();
 
         value["code-created"] = now_u64()?.into();
