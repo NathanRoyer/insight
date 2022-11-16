@@ -22,6 +22,29 @@ html, body {
     background-color: var(--centered-bgcolor);
 }
 
+#auth {
+    max-width: 300px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid gray;
+    padding: 1em;
+    border-radius: 5px;
+    background-color: var(--centered-bgcolor);
+}
+
+#auth > div { display: flex; }
+#auth > p { margin: 0 0 1em 0; }
+#auth > div > div { display: flex; flex-direction: column; }
+#auth > div > :first-child { flex-basis: 100%; }
+
+#auth:not(.hidden) + #centered > * {
+    display: none;
+}
+
 #theme-checkbox:not(:checked) + #themed {
     background-color: var(--browser-theme-bg);
     color: var(--browser-theme-fg);
@@ -106,9 +129,7 @@ body #markdown {
 
 #editor > :first-child { border-left: 1px solid grey; }
 
-.hidden {
-    display: none;
-}
+.hidden { display: none !important; }
 
 button, a, textarea {
     border: 0;
@@ -121,6 +142,11 @@ button, a, textarea {
     resize: vertical;
 }
 
+a { color: inherit; }
 button { cursor: pointer; }
 button:hover { background-color: grey; }
-a { color: inherit; }
+
+button:disabled {
+  pointer-events: none;
+  color: grey;
+}

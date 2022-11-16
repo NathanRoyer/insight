@@ -1,8 +1,8 @@
 # insight
 
-`insight` is a web server allowing you to edit markdown posts and host the rendered result publicly.
+`insight` is a web server allowing you to edit markdown articles and host the rendered result publicly.
 
-It has less than 40 dependencies in total.
+Articles can be anonymous or "protected" (meaning an email address is associated to the article).
 
 CSS media queries are used to automatically select the UI theme (light/dark), but there is also a theme switch on each page.
 
@@ -15,7 +15,15 @@ CSS media queries are used to automatically select the UI theme (light/dark), bu
 $ cargo install insight
 ```
 
-3. Start the server:
+3. Create required directories:
+
+```text
+$ mkdir posts mail
+```
+
+> If you cloned the repo, they're already here.
+
+4. Start the server:
 
 ```text
 $ insight -l 0.0.0.0:9090
@@ -23,15 +31,12 @@ $ insight -l 0.0.0.0:9090
 
 > This will accept requests from all IP addresses
 
-4. Access the server from a web browser to generate the home page: http://localhost:9090/
-5. Edit your home page
-6. Save the home page edition link (which is secret) to be able to edit it again later
-7. Go to http://localhost:9090/new to create other posts.
+5. Access the server from a web browser to generate the home page: http://localhost:9090/
+6. Edit your home page
+7. Save the home page edition link (which is secret) to be able to edit it again later
+8. Go to http://localhost:9090/new to create other posts.
 
 ### Security considerations
-
-The fact that secret edition keys are parts of the URL is bad.
-If you see any alternative that doesn't require user accounts or entering a password, please file an issue on GitHub.
 
 HTML tags are currently stripped from posts at render-time to prevent cross-site scripting vulnerabilities.
 We rely on the `pulldown_cmark` crate to detect these tags.

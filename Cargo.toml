@@ -1,9 +1,9 @@
 [package]
 name = "insight"
-version = "1.2.2"
+version = "1.2.3"
 edition = "2021"
 authors = [ "Nathan ROYER <nathan.royer.pro@gmail.com>" ]
-description = "host, edit and publish markdown posts"
+description = "host, edit and publish markdown articles"
 license = "MIT"
 categories = [ "template-engine" ]
 keywords = [ "markdown" ]

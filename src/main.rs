@@ -45,6 +45,7 @@ pub const DKIM_SELECTOR: &'static str = "insight2022";
 
 const STYLESHEET: &'static str = include_str!("style.css");
 const SVG_FAVICON: &'static str = include_str!("favicon.svg");
+const COMMON_SCRIPT: &'static str = include_str!("common.js");
 const EDITOR_SCRIPT: &'static str = include_str!("editor.js");
 const MANAGER_SCRIPT: &'static str = include_str!("manager.js");
 const INITIAL_MARKDOWN: &'static str = include_str!("initial.md");
@@ -64,36 +65,43 @@ lazy_static! {
         <title>Manage your posts</title>
         <style>{}</style>
         <script>{}</script>
+        <script>{}</script>
     </head>
     <body onload="init()">
         <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
         <div id="themed">
+            <div id="auth">
+                <p id="status">
+                    Posts can be protected with an email address.
+                    If you have protected posts with your email address,
+                    enter it below and follow the procedure to get
+                    access to the posts you protected.
+                </p>
+                <div>
+                    <div>
+                        <input type="email" id="email-field" placeholder="email" />
+                        <input type="text" id="code-field" placeholder="123456" />
+                    </div>
+                    <div>
+                        <button id="check-button">Check</button>
+                        <button id="submit-button">Submit</button>
+                    </div>
+                </div>
+            </div>
             <div id="centered" class="viewer">
-                <h3>Manage your posts</h3>
-                <div id="email-input">
-                    <label>Enter the email you protected your posts with:</label>
-                    <input type="email" id="email-field" placeholder="email" />
-                    <button id="check-button">Check</button>
-                </div>
-                <div id="code-input" class="hidden">
-                    <label>Enter the code we sent you via email: (check spams)</label>
-                    <input type="text" id="code-field" placeholder="123456" />
-                    <button id="submit-button">Submit</button>
-                </div>
-                <button id="list-posts-button" class="hidden">List posts</button>
+                <h1>Manage your posts</h1>
+                <p id="status">Be sure to allow popups from this page.</p>
                 <ul id="post-list"></ul>
-                <p id="status"></p>
+                <button id="list-posts-button">Refresh list</button>
                 <div id="spacer"></div>
                 <p>[powered by <a href="https://lib.rs/crates/insight">insight</a>]</p>
-                <form class="hidden" action="/edit" enctype="application/x-www-form-urlencoded" method="post">
-                    <input name="p" />
-                </form>
             </div>
         </div>
     </body>
 </html>"#,
         SVG_FAVICON_B64.as_str(),
         STYLESHEET,
+        COMMON_SCRIPT,
         MANAGER_SCRIPT,
     );
 }
@@ -294,8 +302,29 @@ fn edit(post: &str, key: &str) -> Option<String> {
     <body onload="init();">
         <script>let post = '{}';</script>
         <script>{}</script>
+        <script>{}</script>
         <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
         <div id="themed">
+            <div id="auth" class="hidden">
+                <p id="status">
+                    Posts can be protected with an email address.
+                    Enter your email address to protect the post.
+                    Protected posts are not automatically deleted
+                    and their edit links are short-lived. You can
+                    manage your protected posts from the
+                    <a href="/manage">Manage</a> page.
+                </p>
+                <div>
+                    <div>
+                        <input type="email" id="email-field" placeholder="email" />
+                        <input type="text" id="code-field" placeholder="123456" />
+                    </div>
+                    <div>
+                        <button id="check-button">Check</button>
+                        <button id="submit-button">Submit</button>
+                    </div>
+                </div>
+            </div>
             <div id="centered">
                 <div id="editor">
                     <button id="protect-button">Protect</button>
@@ -309,6 +338,7 @@ fn edit(post: &str, key: &str) -> Option<String> {
                 SVG_FAVICON_B64.as_str(),
                 STYLESHEET,
                 &encode(&content),
+                COMMON_SCRIPT,
                 EDITOR_SCRIPT,
             );
             return Some(response);
@@ -574,6 +604,14 @@ fn main() {
     let mut args = args().rev();
     let address = args.next().unwrap_or("".into());
     if let Some("-l") = args.next().as_ref().map(|s| s.as_str()) {
+        let posts_dir = metadata("posts");
+        let mail_dir = metadata("mail");
+
+        if posts_dir.is_err() || mail_dir.is_err() {
+            println!("Error: cannot find ./posts, ./mail or both directories");
+            println!("Please create them manually");
+        }
+
         let server = Server::http(address).unwrap();
         let server = Arc::new(server);
         let mut guards = Vec::with_capacity(5);

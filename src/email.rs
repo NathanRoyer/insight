@@ -89,7 +89,8 @@ impl EmailSender {
             let mut rng = rand::thread_rng();
             let private_key = RsaPrivateKey::new(&mut rng, 1024).expect("failed to generate a DKIM key");
             let public_key = RsaPublicKey::from(&private_key);
-            let document = public_key.to_public_key_der()
+            let document = public_key
+                .to_public_key_der()
                 .expect("failed to get pubkey as DER sequence");
 
             let base64 = encode(document.as_bytes());
@@ -132,8 +133,6 @@ impl EmailSender {
         self.dns_id += 1;
 
         // println!("got dns");
-
-        // println!("got best dns: {}", smtp_server);
 
         let body = format!(r#"Hey,
 
