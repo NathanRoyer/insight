@@ -81,8 +81,8 @@ lazy_static! {
                     <button id="submit-button">Submit</button>
                 </div>
                 <button id="list-posts-button" class="hidden">List posts</button>
-                <p id="status"></p>
                 <ul id="post-list"></ul>
+                <p id="status"></p>
                 <div id="spacer"></div>
                 <p>[powered by <a href="https://lib.rs/crates/insight">insight</a>]</p>
                 <form class="hidden" action="/edit" enctype="application/x-www-form-urlencoded" method="post">
@@ -359,7 +359,7 @@ fn send_email_code(body: String, mailer: &Mailer, create: bool) -> Option<String
     let timestamp = value["code-created"].as_u64()?;
 
     let elapsed = elapsed_seconds_since(timestamp)?;
-    if elapsed > FIVE_MINUTES {
+    if true {//elapsed > FIVE_MINUTES {
         let code = six_digit_code();
 
         value["code-created"] = now_u64()?.into();

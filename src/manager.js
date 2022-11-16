@@ -64,6 +64,7 @@ function onListPosts() {
         listPostsButton.disabled = false;
         if (request.status == 200) {
             status.innerText = 'Click on a post to edit in a new tab';
+            postList.innerHTML = "";
 
             let posts = request.responseText.split('\n');
             for (let i = 0; i < posts.length; i++) {

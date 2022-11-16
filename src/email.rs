@@ -1,7 +1,8 @@
-use rsdns::clients::std::Client as DnsClient;
-use rsdns::clients::ClientConfig;
-use rsdns::records::data::Mx;
-use rsdns::constants::Class::In as Internet;
+use dns_parser::Packet;
+use dns_parser::Builder;
+use dns_parser::QueryType;
+use dns_parser::QueryClass;
+use dns_parser::rdata::RData;
 
 use lettre::Message;
 use lettre::message::Mailbox;
@@ -22,20 +23,56 @@ use rsa::RsaPublicKey;
 
 use base64::encode;
 
-use std::net::SocketAddr;
+use std::net::UdpSocket;
 use std::thread::JoinHandle;
 use std::thread;
 use std::fs::write;
 use std::fs::read_to_string;
 use std::sync::mpsc;
 use std::sync::mpsc::SyncSender;
-use std::str::FromStr;
+use std::time::Duration;
 
 pub struct EmailSender {
     dkim_config: DkimConfig,
-    dns_client: DnsClient,
+    dns_id: u16,
     sender_address: String,
     domain_name: String,
+}
+
+fn dns_mx_resolve(name: &str, req_id: u16) -> Option<String> {
+    let mut query = Builder::new_query(req_id, false);
+    query.add_question(name, false, QueryType::MX, QueryClass::IN);
+    let query = query.build().ok()?;
+
+    let mut recv_buf = vec![0; 1024 as usize];
+
+    let socket = UdpSocket::bind(("0.0.0.0", 0)).ok()?;
+    socket.set_write_timeout(Some(Duration::new(2, 0))).ok()?;
+    socket.set_read_timeout(Some(Duration::new(10, 0))).ok()?;
+    socket.connect("1.1.1.1:53").ok()?;
+    socket.send(&query).ok()?;
+
+    let (bytes_recvd, _) = socket.recv_from(&mut recv_buf).ok()?;
+    recv_buf.resize(bytes_recvd, 0);
+
+    let packet = Packet::parse(&recv_buf).ok()?;
+
+    let mut best = u16::MAX;
+    let mut best_index = None;
+    for i in 0..packet.answers.len() {
+        if let RData::MX(mx) = packet.answers[i].data {
+            if mx.preference < best {
+                best_index = Some(i);
+                best = mx.preference;
+            }
+        }
+    }
+
+    if let RData::MX(mx) = packet.answers[best_index?].data {
+        Some(mx.exchange.to_string())
+    } else {
+        None
+    }
 }
 
 impl EmailSender {
@@ -75,13 +112,9 @@ impl EmailSender {
             dkim_key,
         );
 
-        let nameserver = SocketAddr::from_str("8.8.8.8:53").unwrap();
-        let dns_config = ClientConfig::with_nameserver(nameserver);
-        let dns_client = DnsClient::new(dns_config).unwrap();
-
         Self {
             dkim_config,
-            dns_client,
+            dns_id: 0,
             sender_address,
             domain_name,
         }
@@ -94,21 +127,11 @@ impl EmailSender {
     ) -> Option<()> {
         let email_domain = to_email.split("@").last()?;
 
-        let dns_records = self.dns_client.query_rrset::<Mx>(
-            email_domain,
-            Internet,
-        ).ok()?.rdata;
+        let smtp_server = dns_mx_resolve(email_domain, self.dns_id)?;
+        let smtp_server = smtp_server.as_str();
+        self.dns_id += 1;
 
         // println!("got dns");
-
-        let smtp_server = {
-            let best = dns_records.iter().min_by(|a, b| a.preference.cmp(&b.preference))?;
-            let mut best = best.exchange.as_str();
-            if best.ends_with(".") {
-                best = &best[..best.len() - 1];
-            }
-            best
-        };
 
         // println!("got best dns: {}", smtp_server);
 
