@@ -59,6 +59,7 @@ function onPostClick(event) {
 }
 
 function init() {
+    sendEmailCode = '/send-email-code';
     onAuthentication = listPosts;
     commonInit();
 

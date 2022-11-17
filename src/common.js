@@ -4,6 +4,7 @@ let emailField;
 let codeField;
 let status;
 let onAuthentication;
+let sendEmailCode;
 
 let token;
 let email;
@@ -26,7 +27,7 @@ function onCheck() {
     submitButton.disabled = true;
     email = emailField.value;
 
-    api_post('/send-email-code', email, request => {
+    api_post(sendEmailCode, email, request => {
         ckeckButton.disabled = false;
         status.innerText = request.responseText;
         if (request.status == 200) {

@@ -64,6 +64,7 @@ function protectPost() {
 }
 
 function init() {
+    sendEmailCode = '/send-email-code-create';
     onAuthentication = protectPost;
     commonInit();
 
