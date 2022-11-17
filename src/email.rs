@@ -174,8 +174,9 @@ If you're aware of this, here is the code you'll need to enter: {}
         // println!("secured");
 
         // println!("{:?}", client.server_info());
-        let _response = client.send(&envelope, &message);
-        // println!("{:?}", _response);
+        if let Err(error) = client.send(&envelope, &message) {
+            println!("SMTP Send error: {:#?}", error);
+        }
         // println!("cp3");
         client.command(Quit).ok()?;
 
