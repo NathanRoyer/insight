@@ -69,7 +69,13 @@ fn dns_mx_resolve(name: &str, req_id: u16) -> Option<String> {
     }
 
     if let RData::MX(mx) = packet.answers[best_index?].data {
-        Some(mx.exchange.to_string())
+        let mut name = mx.exchange.to_string();
+
+        if name.ends_with(".") {
+            name.pop();
+        }
+
+        Some(name)
     } else {
         None
     }
