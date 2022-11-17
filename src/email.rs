@@ -40,26 +40,39 @@ pub struct EmailSender {
 }
 
 fn dns_mx_resolve(name: &str, req_id: u16) -> Option<String> {
-    let mut query = Builder::new_query(req_id, false);
+    let mut query = Builder::new_query(req_id, true);
     query.add_question(name, false, QueryType::MX, QueryClass::IN);
+
+    // println!("building the query");
     let query = query.build().ok()?;
 
     let mut recv_buf = vec![0; 1024 as usize];
 
+    // println!("udp binding");
     let socket = UdpSocket::bind(("0.0.0.0", 0)).ok()?;
     socket.set_write_timeout(Some(Duration::new(2, 0))).ok()?;
     socket.set_read_timeout(Some(Duration::new(10, 0))).ok()?;
+
+    // println!("udp connecting");
     socket.connect("1.1.1.1:53").ok()?;
+
+    // println!("udp sending");
     socket.send(&query).ok()?;
 
+    // println!("udp receiving");
     let (bytes_recvd, _) = socket.recv_from(&mut recv_buf).ok()?;
     recv_buf.resize(bytes_recvd, 0);
 
-    let packet = Packet::parse(&recv_buf).ok()?;
+    // println!("dns parsing");
+    let packet = Packet::parse(&recv_buf);
+
+    // println!("{:?}", packet);
+    let packet = packet.ok()?;
 
     let mut best = u16::MAX;
     let mut best_index = None;
     for i in 0..packet.answers.len() {
+        // println!("{:?}", packet.answers[i]);
         if let RData::MX(mx) = packet.answers[i].data {
             if mx.preference < best {
                 best_index = Some(i);
@@ -138,7 +151,7 @@ impl EmailSender {
         let smtp_server = smtp_server.as_str();
         self.dns_id += 1;
 
-        // println!("got dns");
+        // println!("got dns: {}", smtp_server);
 
         let body = format!(r#"Hey,
 
@@ -175,15 +188,16 @@ If you're aware of this, here is the code you'll need to enter: {}
 
         if client.can_starttls() {
             client.starttls(&tls_params, &hello).ok()?;
+            // println!("secured");
         }
 
-        // println!("secured");
-
         // println!("{:?}", client.server_info());
+
         if let Err(error) = client.send(&envelope, &message) {
             println!("SMTP Send error: {:#?}", error);
         }
-        // println!("cp3");
+
+        // println!("quitting the server");
         client.command(Quit).ok()?;
 
         println!("sent code {} to {}", code, to_email);
