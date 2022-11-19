@@ -1,1 +1,0 @@
-This folder contains email addresses and linked posts in JSON form.
