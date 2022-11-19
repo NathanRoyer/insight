@@ -19,8 +19,8 @@ use json::JsonValue;
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 
-use std::env::args;
 use std::sync::Arc;
+use std::path::PathBuf;
 use std::fs::read_to_string;
 use std::fs::write;
 use std::fs::metadata;
@@ -31,8 +31,11 @@ use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use std::thread;
 
+pub mod config;
 mod email;
 mod templates;
+
+use config::CONFIG;
 
 use email::spawn_email_thread;
 use email::Mailer;
@@ -41,11 +44,6 @@ use templates::view_template;
 use templates::edit_template;
 use templates::MANAGE_PAGE;
 
-pub const DKIM_PRIVATE_KEY_PATH: &'static str = "mail/dkim-private-key.pem";
-pub const DNS_TXT_PATH: &'static str = "mail/dns.txt";
-pub const DOMAIN_NAME: &'static str = "i.l0.pm";
-pub const DKIM_SELECTOR: &'static str = "insight2022";
-
 const INITIAL_MARKDOWN: &'static str = include_str!("initial.md");
 const INITIAL_HOMEPAGE: &'static str = include_str!("initial-homepage.md");
 const DEFAULT_TITLE: &'static str = "Untitled";
@@ -53,18 +51,23 @@ const DEFAULT_TITLE: &'static str = "Untitled";
 const ONE_MINUTE: u64 = 60;
 const FIVE_MINUTES: u64 = ONE_MINUTE * 5;
 
-fn article_path(article_id: &str) -> Option<String> {
+fn article_path(article_id: &str) -> Option<PathBuf> {
     if article_id.chars().all(char::is_alphanumeric) {
-        Some(format!("articles/{}.json", article_id))
+        let mut buf = CONFIG.articles_dir.join(article_id);
+        buf.set_extension("json");
+        Some(buf)
     } else {
         None
     }
 }
 
-fn email_path(email: &str) -> String {
+fn email_path(email: &str) -> PathBuf {
     let mut hasher = DefaultHasher::new();
     hasher.write(email.as_bytes());
-    format!("mail/{:x}.json", hasher.finish())
+    let hash = format!("{:x}", hasher.finish());
+    let mut buf = CONFIG.articles_dir.join(hash);
+    buf.set_extension("json");
+    buf
 }
 
 fn now_u64() -> Option<u64> {
@@ -419,14 +422,25 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
             },
             1 => {
                 let article = path[0];
-                if article == "new" {
+
+                let is_new_article = match &CONFIG.new_article {
+                    Some(path) => path == article,
+                    None => false,
+                };
+
+                let is_manage = match &CONFIG.manage {
+                    Some(path) => path == article,
+                    None => false,
+                };
+
+                if is_new_article {
                     redirect(&new_article())
-                } else if article == "manage" {
+                } else if is_manage {
                     response(&MANAGE_PAGE, "text/html", 200)
                 } else {
                     match view(article) {
                         Some(body) => response(&body, "text/html", 200),
-                        None => if article == "home" {
+                        None => if article == CONFIG.home {
                             redirect(&create_article(article, INITIAL_HOMEPAGE))
                         } else {
                             bad_request
@@ -434,7 +448,7 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
                     }
                 }
             },
-            0 => redirect("/home"),
+            0 => redirect(&CONFIG.home),
             _ => bad_request,
         }
         Method::Post => match path.get(0) {
@@ -477,45 +491,28 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
 }
 
 fn main() {
-    let mut args = args().rev();
-    let address = args.next().unwrap_or("".into());
-    if let Some("-l") = args.next().as_ref().map(|s| s.as_str()) {
-        let articles_dir = metadata("articles");
-        let mail_dir = metadata("mail");
+    let server = Server::http(&CONFIG.listen_address).unwrap();
+    let server = Arc::new(server);
+    let mut guards = Vec::with_capacity(5);
 
-        if articles_dir.is_err() || mail_dir.is_err() {
-            println!("Error: cannot find ./articles, ./mail or both directories");
-            println!("Please create them manually");
-            return;
-        }
+    let (mail_thread, mail_sender) = spawn_email_thread();
+    guards.push(mail_thread);
 
-        let server = Server::http(address).unwrap();
-        let server = Arc::new(server);
-        let mut guards = Vec::with_capacity(5);
+    for _ in 0..4 {
+        let server = server.clone();
+        let mailer = mail_sender.clone();
 
-        let (mail_thread, mail_sender) = spawn_email_thread();
-        guards.push(mail_thread);
+        let guard = thread::spawn(move || {
+            loop {
+                let request = server.recv().unwrap();
+                handle_request(request, &mailer);
+            }
+        });
 
-        for _ in 0..4 {
-            let server = server.clone();
-            let mailer = mail_sender.clone();
+        guards.push(guard);
+    }
 
-            let guard = thread::spawn(move || {
-                loop {
-                    let request = server.recv().unwrap();
-                    handle_request(request, &mailer);
-                }
-            });
-
-            guards.push(guard);
-        }
-
-        for guard in guards {
-            let _ = guard.join();
-        }
-    } else {
-        println!("wrong usage: missing -l argument");
-        println!("usage: insight -l address:port");
-        println!("       insight -l 0.0.0.0:9090");
+    for guard in guards {
+        let _ = guard.join();
     }
 }

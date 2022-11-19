@@ -26,11 +26,13 @@ use base64::encode;
 use std::net::UdpSocket;
 use std::thread::JoinHandle;
 use std::thread;
-use std::fs::write;
+use std::path::PathBuf;
 use std::fs::read_to_string;
 use std::sync::mpsc;
 use std::sync::mpsc::SyncSender;
 use std::time::Duration;
+
+use crate::config::CONFIG;
 
 pub struct EmailSender {
     dkim_config: DkimConfig,
@@ -99,8 +101,7 @@ impl EmailSender {
         sender_address: String,
         domain_name: String,
         dkim_selector: String,
-        dkim_private_key_path: String,
-        dkim_txt_path: String,
+        dkim_private_key_path: PathBuf,
     ) -> Self {
         let mut dkim_key = read_to_string(&dkim_private_key_path);
 
@@ -114,8 +115,7 @@ impl EmailSender {
 
             let base64 = encode(document.as_bytes());
 
-            let dkim_txt = format!("{}._domainkey.{}\nv=DKIM1; k=rsa; p={}", &dkim_selector, &domain_name, base64);
-            write(&dkim_txt_path, dkim_txt).expect("failed to save txt records");
+            println!("DKIM RECORD:\n\n{}._domainkey.{}\nv=DKIM1; k=rsa; p={}\n\n", &dkim_selector, &domain_name, base64);
 
             private_key
                 .write_pkcs1_pem_file(&dkim_private_key_path, LineEnding::default())
@@ -214,11 +214,10 @@ pub fn spawn_email_thread() -> (JoinHandle<()>, Mailer) {
 
     let handle = thread::spawn(move || {
         let mut email_sender = EmailSender::new(
-            format!("insight@{}", crate::DOMAIN_NAME),
-            crate::DOMAIN_NAME.into(),
-            crate::DKIM_SELECTOR.into(),
-            crate::DKIM_PRIVATE_KEY_PATH.into(),
-            crate::DNS_TXT_PATH.into(),
+            format!("{}@{}", &CONFIG.mail_username, &CONFIG.domain_name),
+            CONFIG.domain_name.clone(),
+            CONFIG.dkim_selector.clone(),
+            CONFIG.dkim_private_key_path.clone(),
         );
 
         while let Ok((to_email, code)) = receiver.recv() {

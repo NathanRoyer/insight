@@ -19,26 +19,42 @@
 $ cargo install insight
 ```
 
-3. Create required directories:
+3. Create `config.json`:
 
-```text
-$ mkdir posts mail
+```json
+{
+    "domain-name": "i.l0.pm",
+    "dkim-private-key-path": "dkim.pem",
+    "dkim-selector": "insight2022",
+    "articles-dir": "articles",
+    "mail-dir": "mail",
+    "mail-username": "insight",
+    "listen-address": "127.0.0.1:9090",
+    "new-article": "new",
+    "manage": "manage",
+    "home": "home",
+    "allow-creation": true
+}
 ```
 
-> If you cloned the repo, they're already here.
-
-4. Start the server:
+4. Create required directories:
 
 ```text
-$ insight -l 0.0.0.0:9090
+$ mkdir articles mail
+```
+
+5. Start the server:
+
+```text
+$ insight -c config.json
 ```
 
 > This will accept requests from all IP addresses
 
-5. Access the server from a web browser to generate the home page: http://localhost:9090/
-6. Edit your home page
-7. Save the home page edition link (which is secret) to be able to edit it again later
-8. Go to http://localhost:9090/new to create other posts.
+6. Access the server from a web browser to generate the home page: http://localhost:9090/
+7. Edit your home page
+8. Save the home page edition link (which is secret) to be able to edit it again later
+9. Go to http://localhost:9090/new to create other posts.
 
 ### Security considerations
 
