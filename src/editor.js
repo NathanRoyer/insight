@@ -3,6 +3,7 @@ let viewButtonNormalText;
 let markdownEntry;
 let saved = true;
 let saving = false;
+let articleSlug;
 
 function onTextEdit() {
     let elements = document.body.children;
@@ -29,7 +30,7 @@ function save() {
     viewButton.innerText = 'Saving...';
     viewButton.disabled = true;
 
-    api_post('/update', JSON.stringify(article), request => {
+    api_post('/' + articleSlug + '/update', JSON.stringify(article), request => {
         if (request.status != 200) {
             console.error(request.responseText);
             alert('Error while saving; details in web tools.');
@@ -54,9 +55,9 @@ function periodicCheck() {
 
 function protectPost() {
     let body = article.key + token + email;
-    api_post('/' + article.article + '/protect', body, request => {
+    api_post('/' + articleSlug + '/protect', body, request => {
         if (request.status == 200) {
-            document.location = '/' + article.article + '/' + request.responseText;
+            document.location = '/' + articleSlug + '/' + request.responseText;
         } else {
             alert('Error: ' + request.responseText);
         }
@@ -68,6 +69,7 @@ function init() {
     onAuthentication = protectPost;
     commonInit();
 
+    articleSlug = document.location.pathname.split('/')[1];
     article = JSON.parse(atob(article));
 
     viewButton = element('view-button');
@@ -76,7 +78,9 @@ function init() {
     markdownEntry.value = article.content;
     viewButtonNormalText = viewButton.innerText;
 
-    viewButton.addEventListener('click', () => open('/' + article.article, '_blank'));
+    viewButton.addEventListener('click', () => {
+        open('/' + articleSlug, '_blank');
+    });
 
     let protectButton = element('protect-button');
     if (article.author) protectButton.remove();

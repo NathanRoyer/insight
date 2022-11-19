@@ -107,8 +107,12 @@ lazy_static! {
     );
 }
 
-fn article_path(article: &str) -> String {
-    format!("articles/{}.json", article)
+fn article_path(article_id: &str) -> Option<String> {
+    if article_id.chars().all(char::is_alphanumeric) {
+        Some(format!("articles/{}.json", article_id))
+    } else {
+        None
+    }
 }
 
 fn email_path(email: &str) -> String {
@@ -127,66 +131,68 @@ fn elapsed_seconds_since(timestamp: u64) -> Option<u64> {
     now_u64()?.checked_sub(timestamp)
 }
 
-fn check_and_update(article: &str, new_json: &str) -> Option<()> {
-    if article.chars().all(char::is_alphanumeric) {
-        let old_json = read_to_string(article_path(article)).ok()?;
-        let old_value = parse(&old_json).ok()?;
-        let new_value = parse(&new_json).ok()?;
+fn check_and_update(new_json: &str, article_id: &str) -> Option<()> {
+    let path = article_path(article_id)?;
 
-        let new_value_key = new_value["key"].as_str()?;
-        let old_value_key = old_value["key"].as_str()?;
-        if old_value_key != new_value_key {
-            return None;
+    let old_json = read_to_string(&path).ok()?;
+    let old_value = parse(&old_json).ok()?;
+    let new_value = parse(&new_json).ok()?;
+
+    let new_value_key = new_value["key"].as_str()?;
+    let old_value_key = old_value["key"].as_str()?;
+    if old_value_key != new_value_key {
+        return None;
+    }
+
+    let mut clean_value = JsonValue::new_object();
+    clean_value["key"] = new_value_key.into();
+    clean_value["author"] = old_value["author"].clone();
+
+    let now = now_u64()?;
+    let created = old_value["created"].as_u64().unwrap_or(now);
+    clean_value["created"] = created.into();
+    clean_value["edited"] = now.into();
+
+    let content = new_value["content"].as_str()?;
+    clean_value["content"] = content.into();
+    clean_value["title"] = {
+        let parser = Parser::new(&content);
+        let mut title = String::from(DEFAULT_TITLE);
+
+        for event in parser {
+            if let Event::Text(cow_str) = event {
+                title = cow_str.to_string();
+                break;
+            }
         }
 
-        let mut clean_value = JsonValue::new_object();
-        clean_value["key"] = new_value_key.into();
-        clean_value["author"] = old_value["author"].clone();
-        clean_value["created"] = old_value["created"].clone();
-        clean_value["edited"] = now_u64().into();
+        title
+    }.into();
 
-        let content = new_value["content"].as_str()?;
-        clean_value["content"] = content.into();
-        clean_value["title"] = {
-            let parser = Parser::new(&content);
-            let mut title = String::from(DEFAULT_TITLE);
-
-            for event in parser {
-                if let Event::Text(cow_str) = event {
-                    title = cow_str.to_string();
-                    break;
-                }
-            }
-
-            title
-        }.into();
-
-        write(article_path(article), &clean_value.dump()).ok()
-    } else {
-        None
-    }
+    write(path, &clean_value.dump()).ok()
 }
 
-fn view(article: &str) -> Option<String> {
-    if article.chars().all(char::is_alphanumeric) {
-        let content = read_to_string(article_path(article)).ok()?;
-        let value = parse(&content).ok()?;
-        let markdown = value["content"].as_str()?;
-        let title = value["title"].as_str()?;
+fn view(article_id: &str) -> Option<String> {
+    let path = article_path(article_id)?;
 
-        let mut options = Options::empty();
-        options.insert(Options::ENABLE_STRIKETHROUGH);
-        let parser = Parser::new_ext(&markdown, options);
+    let content = read_to_string(path).ok()?;
+    let value = parse(&content).ok()?;
+    let markdown = value["content"].as_str()?;
+    let title = value["title"].as_str()?;
 
-        let mut body = String::new();
-        html::push_html(&mut body, parser.map(|event| {
-            match event {
-                Event::Html(_) => Event::Text(CowStr::Borrowed("[removed HTML]")),
-                _ => event,
-            }
-        }));
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    let parser = Parser::new_ext(&markdown, options);
 
-        let response = format!(r#"<!DOCTYPE html>
+    let mut body = String::new();
+    html::push_html(&mut body, parser.map(|event| {
+        match event {
+            Event::Html(_) => Event::Text(CowStr::Borrowed("[removed HTML]")),
+            _ => event,
+        }
+    }));
+
+    let response = format!(r#"<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8">
@@ -206,15 +212,13 @@ fn view(article: &str) -> Option<String> {
         </div>
     </body>
 </html>"#,
-            SVG_FAVICON_B64.as_str(),
-            encode_text(&title),
-            STYLESHEET,
-            body,
-        );
-        return Some(response);
-    }
-    
-    None
+        SVG_FAVICON_B64.as_str(),
+        encode_text(&title),
+        STYLESHEET,
+        body,
+    );
+
+    Some(response)
 }
 
 fn alphanumeric12() -> String {
@@ -232,8 +236,9 @@ fn six_digit_code() -> String {
     code
 }
 
-fn create_article(article: &str, content: &str) -> String {
-    let path = article_path(article);
+// article_id MUST BE VALID
+fn create_article(article_id: &str, content: &str) -> String {
+    let path = article_path(article_id).unwrap();
 
     let key = alphanumeric12();
     let value = object!{
@@ -245,53 +250,54 @@ fn create_article(article: &str, content: &str) -> String {
     };
 
     let _ = write(path, &value.dump());
-    format!("/{}/{}", article, key)
+    format!("/{}/{}", article_id, key)
 }
 
 fn new_article() -> String {
-    let mut article: String;
+    let mut article_id: String;
 
     loop {
-        article = alphanumeric12();
-        if let Err(_) = metadata(&article_path(&article)) {
+        article_id = alphanumeric12();
+        let path = article_path(&article_id).unwrap();
+        if let Err(_) = metadata(path) {
             break;
         }
     }
 
-    create_article(&article, INITIAL_MARKDOWN)
+    create_article(&article_id, INITIAL_MARKDOWN)
 }
 
-fn edit(article: &str, key: &str) -> Option<String> {
-    if article.chars().all(char::is_alphanumeric) {
-        let article_path = article_path(article);
-        let mut content = read_to_string(&article_path).ok()?;
-        let mut value = parse(&content).ok()?;
+fn edit(article_id: &str, key: &str) -> Option<String> {
+    let path = article_path(article_id)?;
 
-        let valid_key;
-        let protected;
-        if let Some(author) = value["author"].as_str() {
-            protected = true;
-            let content = read_to_string(email_path(author)).ok()?;
-            let mail = parse(&content).ok()?;
-            let article_key = mail["articles"][article][0].as_str()?;
-            let creation = mail["articles"][article][1].as_u64()?;
+    let mut content = read_to_string(&path).ok()?;
+    let mut value = parse(&content).ok()?;
 
-            let elapsed = elapsed_seconds_since(creation)?;
-            valid_key = key == article_key && elapsed < ONE_MINUTE;
-        } else {
-            protected = false;
-            valid_key = key == value["key"].as_str()?;
-        };
+    let valid_key;
+    let protected;
+    if let Some(author) = value["author"].as_str() {
+        protected = true;
+        let content = read_to_string(email_path(author)).ok()?;
+        let mail = parse(&content).ok()?;
+        let article_key = mail["articles"][article_id][0].as_str()?;
+        let creation = mail["articles"][article_id][1].as_u64()?;
 
-        if valid_key {
-            if protected {
-                // regen key
-                value["key"] = alphanumeric12().into();
-                content = value.dump();
-                write(&article_path, &content).ok()?;
-            }
+        let elapsed = elapsed_seconds_since(creation)?;
+        valid_key = key == article_key && elapsed < ONE_MINUTE;
+    } else {
+        protected = false;
+        valid_key = key == value["key"].as_str()?;
+    };
 
-            let response = format!(r#"<!DOCTYPE html>
+    if valid_key {
+        if protected {
+            // regen key
+            value["key"] = alphanumeric12().into();
+            content = value.dump();
+            write(&path, &content).ok()?;
+        }
+
+        let response = format!(r#"<!DOCTYPE html>
 <html>
     <head>
         <meta charset="utf-8">
@@ -336,17 +342,17 @@ fn edit(article: &str, key: &str) -> Option<String> {
         </div>
     </body>
 </html>"#,
-                SVG_FAVICON_B64.as_str(),
-                STYLESHEET,
-                &encode(&content),
-                COMMON_SCRIPT,
-                EDITOR_SCRIPT,
-            );
-            return Some(response);
-        }
+            SVG_FAVICON_B64.as_str(),
+            STYLESHEET,
+            &encode(&content),
+            COMMON_SCRIPT,
+            EDITOR_SCRIPT,
+        );
+
+        Some(response)
+    } else {
+        None
     }
-    
-    None
 }
 
 fn response(content: &str, content_type: &str, code: u32) -> Response<Cursor<Vec<u8>>> {
@@ -363,9 +369,9 @@ fn redirect(location: &str) -> Response<Cursor<Vec<u8>>> {
         .with_header(header)
 }
 
-fn handle_article_update(body: String) -> Option<()> {
+fn handle_article_update(body: String, article_id: &str) -> Option<()> {
     let json = body;
-    check_and_update(&json)
+    check_and_update(&json, article_id)
 }
 
 fn send_email_code(body: String, mailer: &Mailer, create: bool) -> Option<String> {
@@ -442,7 +448,8 @@ fn list_articles(body: String) -> Option<String> {
         let mut output = String::new();
 
         for (article_id, _) in articles.entries() {
-            let json = read_to_string(&article_path(article_id)).ok()?;
+            let path = article_path(article_id)?;
+            let json = read_to_string(path).ok()?;
             let article = parse(&json).ok()?;
             let title = article["title"].as_str()?;
 
@@ -465,7 +472,7 @@ fn protect_article(body: String, article_id: &str) -> Option<String> {
     let email   = body.get(24..)?;
 
     let mail_path = email_path(&email);
-    let article_path = article_path(&article_id);
+    let article_path = article_path(&article_id)?;
 
     let article = read_to_string(&article_path).ok()?;
     let mail = read_to_string(&mail_path).ok()?;
@@ -563,10 +570,6 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
             _ => bad_request,
         }
         Method::Post => match path.get(0) {
-            Some(&"update") => match handle_article_update(body) {
-                Some(_) => response("OK", "text", 200),
-                None => bad_request,
-            },
             Some(&"send-email-code") => match send_email_code(body, mailer, false) {
                 Some(body) => response(&body, "text", 200),
                 None => bad_request,
@@ -584,6 +587,10 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
                 None => bad_request,
             },
             _ => match path.get(1) {
+                Some(&"update") => match handle_article_update(body, path[0]) {
+                    Some(_) => response("OK", "text", 200),
+                    None => bad_request,
+                },
                 Some(&"protect") => match protect_article(body, path[0]) {
                     Some(body) => response(&body, "text", 200),
                     None => bad_request,
@@ -611,6 +618,7 @@ fn main() {
         if articles_dir.is_err() || mail_dir.is_err() {
             println!("Error: cannot find ./articles, ./mail or both directories");
             println!("Please create them manually");
+            return;
         }
 
         let server = Server::http(address).unwrap();

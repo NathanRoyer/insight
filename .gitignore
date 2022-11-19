@@ -1,6 +1,4 @@
 /target
 /Cargo.lock
-/posts/*.json
-/mail/*.json
-/mail/*.pem
-/mail/dns.txt
+/articles
+/mail
