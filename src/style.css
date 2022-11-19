@@ -22,7 +22,7 @@ html, body {
     background-color: var(--centered-bgcolor);
 }
 
-#auth {
+#popup {
     max-width: 300px;
     position: absolute;
     top: 50%;
@@ -36,12 +36,12 @@ html, body {
     background-color: var(--centered-bgcolor);
 }
 
-#auth > div { display: flex; }
-#auth > p { margin: 0 0 1em 0; }
-#auth > div > div { display: flex; flex-direction: column; }
-#auth > div > :first-child { flex-basis: 100%; }
+#popup > div { display: flex; }
+#popup > p { margin: 0 0 1em 0; }
+#popup > div > div { display: flex; flex-direction: column; }
+#popup > div > :first-child { flex-basis: 100%; }
 
-#auth:not(.hidden) + #centered > * {
+#popup:not(.hidden) + #centered > * {
     display: none;
 }
 

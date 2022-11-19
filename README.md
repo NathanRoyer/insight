@@ -10,6 +10,11 @@
 - on-disk JSON database → easy backups
 - easily dockerized
 
+### To-do
+
+- email templates
+- automatic deletion of anonymous posts after configurable duration
+
 ### Setup
 
 1. Install [the Rust toolchain](https://rust-lang.org/)

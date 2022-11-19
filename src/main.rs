@@ -43,6 +43,7 @@ use email::Mailer;
 use templates::view_template;
 use templates::edit_template;
 use templates::MANAGE_PAGE;
+use templates::NEW_ARTICLE_PAGE;
 
 const INITIAL_MARKDOWN: &'static str = include_str!("initial.md");
 const INITIAL_HOMEPAGE: &'static str = include_str!("initial-homepage.md");
@@ -51,13 +52,33 @@ const DEFAULT_TITLE: &'static str = "Untitled";
 const ONE_MINUTE: u64 = 60;
 const FIVE_MINUTES: u64 = ONE_MINUTE * 5;
 
+fn equal(left: &Option<String>, right: &str) -> bool {
+    match left {
+        Some(left) => left == right,
+        None => false,
+    }
+}
+
+fn is_char_ok(c: char) -> bool {
+    if char::is_alphanumeric(c) || c == '-' {
+        true
+    } else {
+        false
+    }
+}
+
 fn article_path(article_id: &str) -> Option<PathBuf> {
-    if article_id.chars().all(char::is_alphanumeric) {
+    if equal(&CONFIG.manage, article_id)
+    || equal(&CONFIG.new_article, article_id)
+    || !article_id.chars().all(is_char_ok)
+    || article_id.chars().next() == Some('-')
+    || article_id.chars().last() == Some('-')
+    || article_id == "" {
+        None
+    } else {
         let mut buf = CONFIG.articles_dir.join(article_id);
         buf.set_extension("json");
         Some(buf)
-    } else {
-        None
     }
 }
 
@@ -159,9 +180,13 @@ fn six_digit_code() -> String {
     code
 }
 
-// article_id MUST BE VALID
-fn create_article(article_id: &str, content: &str) -> String {
-    let path = article_path(article_id).unwrap();
+fn create_article(article_id: &str, content: &str) -> Result<String, &'static str> {
+    let path = article_path(article_id)
+        .ok_or("Invalid article slug")?;
+
+    if metadata(&path).is_ok() {
+        return Err("Article slug already taken");
+    }
 
     let key = alphanumeric12();
     let value = object!{
@@ -173,21 +198,7 @@ fn create_article(article_id: &str, content: &str) -> String {
     };
 
     let _ = write(path, &value.dump());
-    format!("/{}/{}", article_id, key)
-}
-
-fn new_article() -> String {
-    let mut article_id: String;
-
-    loop {
-        article_id = alphanumeric12();
-        let path = article_path(&article_id).unwrap();
-        if let Err(_) = metadata(path) {
-            break;
-        }
-    }
-
-    create_article(&article_id, INITIAL_MARKDOWN)
+    Ok(format!("/{}/{}", article_id, key))
 }
 
 fn edit(article_id: &str, key: &str) -> Option<String> {
@@ -423,25 +434,16 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
             1 => {
                 let article = path[0];
 
-                let is_new_article = match &CONFIG.new_article {
-                    Some(path) => path == article,
-                    None => false,
-                };
-
-                let is_manage = match &CONFIG.manage {
-                    Some(path) => path == article,
-                    None => false,
-                };
-
-                if is_new_article {
-                    redirect(&new_article())
-                } else if is_manage {
+                if equal(&CONFIG.new_article, article) {
+                    response(&NEW_ARTICLE_PAGE, "text/html", 200)
+                } else if equal(&CONFIG.manage, article) {
                     response(&MANAGE_PAGE, "text/html", 200)
                 } else {
                     match view(article) {
                         Some(body) => response(&body, "text/html", 200),
                         None => if article == CONFIG.home {
-                            redirect(&create_article(article, INITIAL_HOMEPAGE))
+                            let homepage = create_article(article, INITIAL_HOMEPAGE);
+                            redirect(&homepage.unwrap())
                         } else {
                             bad_request
                         },
@@ -452,6 +454,10 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
             _ => bad_request,
         }
         Method::Post => match path.get(0) {
+            Some(&"create") => match create_article(&body, INITIAL_MARKDOWN) {
+                Ok(body) => response(&body, "text", 200),
+                Err(body) => response(&body, "text", 400),
+            },
             Some(&"send-email-code") => match send_email_code(body, mailer, false) {
                 Some(body) => response(&body, "text", 200),
                 None => bad_request,

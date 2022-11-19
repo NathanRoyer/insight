@@ -85,7 +85,7 @@ function init() {
     let protectButton = element('protect-button');
     if (article.author) protectButton.remove();
     else protectButton.addEventListener('click', () => {
-        element('auth').classList.remove('hidden');
+        element('popup').classList.remove('hidden');
     });
 
     periodicCheck();

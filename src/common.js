@@ -43,7 +43,7 @@ function onCodeSubmit() {
     api_post('/check-email-code', codeField.value + email, request => {
         submitButton.disabled = false;
         if (request.status == 200) {
-            auth.classList.add('hidden');
+            element('popup').classList.add('hidden');
             token = request.responseText;
             onAuthentication();
         } else {
@@ -53,13 +53,13 @@ function onCodeSubmit() {
 }
 
 function commonInit() {
-    status = document.getElementById('status');
-    emailField = document.getElementById('email-field');
-    codeField = document.getElementById('code-field');
-    ckeckButton = document.getElementById('check-button');
+    status = element('status');
+    emailField = element('email-field');
+    codeField = element('code-field');
+    ckeckButton = element('check-button');
     ckeckButton.addEventListener('click', onCheck);
 
-    submitButton = document.getElementById('submit-button');
+    submitButton = element('submit-button');
     submitButton.addEventListener('click', onCodeSubmit);
 
     ckeckButton.disabled = false;

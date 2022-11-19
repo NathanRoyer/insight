@@ -7,6 +7,7 @@ const SVG_FAVICON: &'static str = include_str!("favicon.svg");
 const COMMON_SCRIPT: &'static str = include_str!("common.js");
 const EDITOR_SCRIPT: &'static str = include_str!("editor.js");
 const MANAGER_SCRIPT: &'static str = include_str!("manager.js");
+const NEW_ARTICLE_SCRIPT: &'static str = include_str!("new-article.js");
 
 lazy_static! {
     static ref SVG_FAVICON_B64: String = encode(SVG_FAVICON);
@@ -24,7 +25,7 @@ lazy_static! {
     <body onload="init()">
         <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
         <div id="themed">
-            <div id="auth">
+            <div id="popup">
                 <p id="status">
                     Articles can be protected with an email address.
                     If you have protected articles with your email address,
@@ -57,6 +58,44 @@ lazy_static! {
         STYLESHEET,
         COMMON_SCRIPT,
         MANAGER_SCRIPT,
+    );
+
+    pub static ref NEW_ARTICLE_PAGE: String = format!(r#"<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,{}">
+        <title>New Article</title>
+        <style>{}</style>
+        <script>{}</script>
+        <script>{}</script>
+    </head>
+    <body onload="init()">
+        <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
+        <div id="themed">
+            <div id="popup">
+                <p id="status">
+                    Choose the <a href="https://en.wikipedia.org/wiki/Clean_URL#Slug">slug</a> for your article.
+                </p>
+                <div>
+                    <div>
+                        <input type="text" id="article-id-field" placeholder="article slug" />
+                    </div>
+                    <div>
+                        <button id="create-button">Create</button>
+                    </div>
+                </div>
+            </div>
+            <div id="centered" class="viewer">
+            </div>
+        </div>
+    </body>
+</html>"#,
+        SVG_FAVICON_B64.as_str(),
+        STYLESHEET,
+        COMMON_SCRIPT,
+        NEW_ARTICLE_SCRIPT,
     );
 }
 
@@ -104,7 +143,7 @@ pub fn edit_template(content: &str) -> String {
         <script>{}</script>
         <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
         <div id="themed">
-            <div id="auth" class="hidden">
+            <div id="popup" class="hidden">
                 <p id="status">
                     Articles can be protected with an email address.
                     Enter your email address to protect the article.
