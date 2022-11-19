@@ -10,9 +10,7 @@ use pulldown_cmark::Parser;
 use pulldown_cmark::Options;
 use pulldown_cmark::html;
 
-use html_escape::encode_text;
 use base64::encode;
-use lazy_static::lazy_static;
 
 use json::parse;
 use json::object;
@@ -34,78 +32,26 @@ use std::time::UNIX_EPOCH;
 use std::thread;
 
 mod email;
+mod templates;
 
 use email::spawn_email_thread;
 use email::Mailer;
+
+use templates::view_template;
+use templates::edit_template;
+use templates::MANAGE_PAGE;
 
 pub const DKIM_PRIVATE_KEY_PATH: &'static str = "mail/dkim-private-key.pem";
 pub const DNS_TXT_PATH: &'static str = "mail/dns.txt";
 pub const DOMAIN_NAME: &'static str = "i.l0.pm";
 pub const DKIM_SELECTOR: &'static str = "insight2022";
 
-const STYLESHEET: &'static str = include_str!("style.css");
-const SVG_FAVICON: &'static str = include_str!("favicon.svg");
-const COMMON_SCRIPT: &'static str = include_str!("common.js");
-const EDITOR_SCRIPT: &'static str = include_str!("editor.js");
-const MANAGER_SCRIPT: &'static str = include_str!("manager.js");
 const INITIAL_MARKDOWN: &'static str = include_str!("initial.md");
 const INITIAL_HOMEPAGE: &'static str = include_str!("initial-homepage.md");
 const DEFAULT_TITLE: &'static str = "Untitled";
 
 const ONE_MINUTE: u64 = 60;
 const FIVE_MINUTES: u64 = ONE_MINUTE * 5;
-
-lazy_static! {
-    static ref SVG_FAVICON_B64: String = encode(SVG_FAVICON);
-    static ref MANAGE_PAGE: String = format!(r#"<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,{}">
-        <title>Manage your articles</title>
-        <style>{}</style>
-        <script>{}</script>
-        <script>{}</script>
-    </head>
-    <body onload="init()">
-        <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
-        <div id="themed">
-            <div id="auth">
-                <p id="status">
-                    Articles can be protected with an email address.
-                    If you have protected articles with your email address,
-                    enter it below and follow the procedure to get
-                    access to the articles you protected.
-                </p>
-                <div>
-                    <div>
-                        <input type="email" id="email-field" placeholder="email" />
-                        <input type="text" id="code-field" placeholder="123456" />
-                    </div>
-                    <div>
-                        <button id="check-button">Check</button>
-                        <button id="submit-button">Submit</button>
-                    </div>
-                </div>
-            </div>
-            <div id="centered" class="viewer">
-                <h1>Manage your articles</h1>
-                <p id="status">Be sure to allow popups from this page.</p>
-                <ul id="article-list"></ul>
-                <button id="list-articles-button">Refresh list</button>
-                <div id="spacer"></div>
-                <p>[powered by <a href="https://lib.rs/crates/insight">insight</a>]</p>
-            </div>
-        </div>
-    </body>
-</html>"#,
-        SVG_FAVICON_B64.as_str(),
-        STYLESHEET,
-        COMMON_SCRIPT,
-        MANAGER_SCRIPT,
-    );
-}
 
 fn article_path(article_id: &str) -> Option<String> {
     if article_id.chars().all(char::is_alphanumeric) {
@@ -192,33 +138,7 @@ fn view(article_id: &str) -> Option<String> {
         }
     }));
 
-    let response = format!(r#"<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,{}">
-        <title>{}</title>
-        <style>{}</style>
-    </head>
-    <body>
-        <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
-        <div id="themed">
-            <div id="centered" class="viewer">
-                {}
-                <div id="spacer"></div>
-                <p>[powered by <a href="https://lib.rs/crates/insight">insight</a>]</p>
-            </div>
-        </div>
-    </body>
-</html>"#,
-        SVG_FAVICON_B64.as_str(),
-        encode_text(&title),
-        STYLESHEET,
-        body,
-    );
-
-    Some(response)
+    Some(view_template(&title, &body))
 }
 
 fn alphanumeric12() -> String {
@@ -297,59 +217,7 @@ fn edit(article_id: &str, key: &str) -> Option<String> {
             write(&path, &content).ok()?;
         }
 
-        let response = format!(r#"<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,{}">
-        <title>Editor - i.l0.pm</title>
-        <style>{}</style>
-    </head>
-    <body onload="init();">
-        <script>let article = '{}';</script>
-        <script>{}</script>
-        <script>{}</script>
-        <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
-        <div id="themed">
-            <div id="auth" class="hidden">
-                <p id="status">
-                    Articles can be protected with an email address.
-                    Enter your email address to protect the article.
-                    Protected articles are not automatically deleted
-                    and their edit links are short-lived. You can
-                    manage your protected articles from the
-                    <a href="/manage">Manage</a> page.
-                </p>
-                <div>
-                    <div>
-                        <input type="email" id="email-field" placeholder="email" />
-                        <input type="text" id="code-field" placeholder="123456" />
-                    </div>
-                    <div>
-                        <button id="check-button">Check</button>
-                        <button id="submit-button">Submit</button>
-                    </div>
-                </div>
-            </div>
-            <div id="centered">
-                <div id="editor">
-                    <button id="protect-button">Protect</button>
-                    <button id="view-button">View ⬀</button>
-                </div>
-                <textarea id="markdown"></textarea>
-            </div>
-        </div>
-    </body>
-</html>"#,
-            SVG_FAVICON_B64.as_str(),
-            STYLESHEET,
-            &encode(&content),
-            COMMON_SCRIPT,
-            EDITOR_SCRIPT,
-        );
-
-        Some(response)
+        Some(edit_template(&content))
     } else {
         None
     }
@@ -635,7 +503,6 @@ fn main() {
             let guard = thread::spawn(move || {
                 loop {
                     let request = server.recv().unwrap();
-                    // sender.send(("lolatesy5644@gmail.com".into(), "876345".into())).unwrap();
                     handle_request(request, &mailer);
                 }
             });
