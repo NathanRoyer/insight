@@ -1,22 +1,22 @@
-let postList;
+let articleList;
 
 function listPosts() {
-    status.innerText = 'Listing posts...';
+    status.innerText = 'Listing articles...';
 
-    api_post('/list-posts', token + email, request => {
+    api_post('/list-articles', token + email, request => {
         if (request.status == 200) {
-            status.innerText = 'Click on a post to edit in a new tab';
-            postList.innerHTML = "";
+            status.innerText = 'Click on an article to edit in a new tab';
+            articleList.innerHTML = "";
 
-            let posts = request.responseText.split('\n');
-            for (let i = 0; i < posts.length; i++) {
-                let post = posts[i].split(':');
-                let id = post[0];
-                let title = atob(post[1]);
+            let articles = request.responseText.split('\n');
+            for (let i = 0; i < articles.length; i++) {
+                let article = articles[i].split(':');
+                let id = article[0];
+                let title = atob(article[1]);
 
                 let a = document.createElement('a');
                 a.innerText = title;
-                a.dataset.postId = id;
+                a.dataset.articleId = id;
                 a.href = '';
                 a.addEventListener('click', onPostClick);
 
@@ -27,7 +27,7 @@ function listPosts() {
 
                 let editLink = document.createElement('a');
                 editLink.innerText = 'edit';
-                editLink.dataset.postId = id;
+                editLink.dataset.articleId = id;
                 editLink.href = '';
                 editLink.addEventListener('click', onPostClick);
 
@@ -35,7 +35,7 @@ function listPosts() {
                 li.appendChild(viewLink);
                 li.appendChild(document.createTextNode(' - '));
                 li.appendChild(editLink);
-                postList.appendChild(li);
+                articleList.appendChild(li);
             }
         } else {
             status.innerText = request.responseText;
@@ -44,12 +44,12 @@ function listPosts() {
 }
 
 function onPostClick(event) {
-    let postId = event.target.dataset.postId;
+    let articleId = event.target.dataset.articleId;
 
-    api_post('/' + postId + '/get-edit-link', token + email, request => {
+    api_post('/' + articleId + '/get-edit-link', token + email, request => {
         if (request.status == 200) {
             let oneTimeKey = request.responseText;
-            open('/' + postId + '/' + oneTimeKey, '_blank');
+            open('/' + articleId + '/' + oneTimeKey, '_blank');
         } else {
             status.innerText = request.responseText;
         }
@@ -63,6 +63,6 @@ function init() {
     onAuthentication = listPosts;
     commonInit();
 
-    postList = element('post-list');
-    element('list-posts-button').addEventListener('click', listPosts);
+    articleList = element('article-list');
+    element('list-articles-button').addEventListener('click', listPosts);
 }

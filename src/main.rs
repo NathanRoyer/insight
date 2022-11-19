@@ -62,7 +62,7 @@ lazy_static! {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="icon" type="image/x-icon" href="data:image/svg+xml;base64,{}">
-        <title>Manage your posts</title>
+        <title>Manage your articles</title>
         <style>{}</style>
         <script>{}</script>
         <script>{}</script>
@@ -72,10 +72,10 @@ lazy_static! {
         <div id="themed">
             <div id="auth">
                 <p id="status">
-                    Posts can be protected with an email address.
-                    If you have protected posts with your email address,
+                    Articles can be protected with an email address.
+                    If you have protected articles with your email address,
                     enter it below and follow the procedure to get
-                    access to the posts you protected.
+                    access to the articles you protected.
                 </p>
                 <div>
                     <div>
@@ -89,10 +89,10 @@ lazy_static! {
                 </div>
             </div>
             <div id="centered" class="viewer">
-                <h1>Manage your posts</h1>
+                <h1>Manage your articles</h1>
                 <p id="status">Be sure to allow popups from this page.</p>
-                <ul id="post-list"></ul>
-                <button id="list-posts-button">Refresh list</button>
+                <ul id="article-list"></ul>
+                <button id="list-articles-button">Refresh list</button>
                 <div id="spacer"></div>
                 <p>[powered by <a href="https://lib.rs/crates/insight">insight</a>]</p>
             </div>
@@ -106,8 +106,8 @@ lazy_static! {
     );
 }
 
-fn post_path(post: &str) -> String {
-    format!("posts/{}.json", post)
+fn article_path(article: &str) -> String {
+    format!("articles/{}.json", article)
 }
 
 fn email_path(email: &str) -> String {
@@ -128,10 +128,10 @@ fn elapsed_seconds_since(timestamp: u64) -> Option<u64> {
 
 fn check_and_update(new_json: &str) -> Option<()> {
     let new_value = parse(&new_json).ok()?;
-    let post = new_value["post"].as_str()?;
+    let article = new_value["article"].as_str()?;
 
-    if post.chars().all(char::is_alphanumeric) {
-        let old_json = read_to_string(post_path(post)).ok()?;
+    if article.chars().all(char::is_alphanumeric) {
+        let old_json = read_to_string(article_path(article)).ok()?;
         let old_value = parse(&old_json).ok()?;
 
         let new_value_key = new_value["key"].as_str()?;
@@ -143,7 +143,7 @@ fn check_and_update(new_json: &str) -> Option<()> {
         let mut clean_value = JsonValue::new_object();
         clean_value["key"] = new_value_key.into();
         clean_value["author"] = old_value["author"].clone();
-        clean_value["post"] = post.into();
+        clean_value["article"] = article.into();
 
         let content = new_value["content"].as_str()?;
         clean_value["content"] = content.into();
@@ -161,15 +161,15 @@ fn check_and_update(new_json: &str) -> Option<()> {
             title
         }.into();
 
-        write(post_path(post), &clean_value.dump()).ok()
+        write(article_path(article), &clean_value.dump()).ok()
     } else {
         None
     }
 }
 
-fn view(post: &str) -> Option<String> {
-    if post.chars().all(char::is_alphanumeric) {
-        let content = read_to_string(post_path(post)).ok()?;
+fn view(article: &str) -> Option<String> {
+    if article.chars().all(char::is_alphanumeric) {
+        let content = read_to_string(article_path(article)).ok()?;
         let value = parse(&content).ok()?;
         let markdown = value["content"].as_str()?;
         let title = value["title"].as_str()?;
@@ -232,38 +232,38 @@ fn six_digit_code() -> String {
     code
 }
 
-fn create_post(post: &str, content: &str) -> String {
-    let path = post_path(post);
+fn create_article(article: &str, content: &str) -> String {
+    let path = article_path(article);
 
     let key = alphanumeric12();
     let value = object!{
         "key": key.as_str(),
         "content": content,
-        "post": post,
+        "article": article,
         "title": "Untitled",
     };
 
     let _ = write(path, &value.dump());
-    format!("/{}/{}", post, key)
+    format!("/{}/{}", article, key)
 }
 
-fn new_post() -> String {
-    let mut post: String;
+fn new_article() -> String {
+    let mut article: String;
 
     loop {
-        post = alphanumeric12();
-        if let Err(_) = metadata(&post_path(&post)) {
+        article = alphanumeric12();
+        if let Err(_) = metadata(&article_path(&article)) {
             break;
         }
     }
 
-    create_post(&post, INITIAL_MARKDOWN)
+    create_article(&article, INITIAL_MARKDOWN)
 }
 
-fn edit(post: &str, key: &str) -> Option<String> {
-    if post.chars().all(char::is_alphanumeric) {
-        let post_path = post_path(post);
-        let mut content = read_to_string(&post_path).ok()?;
+fn edit(article: &str, key: &str) -> Option<String> {
+    if article.chars().all(char::is_alphanumeric) {
+        let article_path = article_path(article);
+        let mut content = read_to_string(&article_path).ok()?;
         let mut value = parse(&content).ok()?;
 
         let valid_key;
@@ -272,11 +272,11 @@ fn edit(post: &str, key: &str) -> Option<String> {
             protected = true;
             let content = read_to_string(email_path(author)).ok()?;
             let mail = parse(&content).ok()?;
-            let post_key = mail["posts"][post][0].as_str()?;
-            let creation = mail["posts"][post][1].as_u64()?;
+            let article_key = mail["articles"][article][0].as_str()?;
+            let creation = mail["articles"][article][1].as_u64()?;
 
             let elapsed = elapsed_seconds_since(creation)?;
-            valid_key = key == post_key && elapsed < ONE_MINUTE;
+            valid_key = key == article_key && elapsed < ONE_MINUTE;
         } else {
             protected = false;
             valid_key = key == value["key"].as_str()?;
@@ -287,7 +287,7 @@ fn edit(post: &str, key: &str) -> Option<String> {
                 // regen key
                 value["key"] = alphanumeric12().into();
                 content = value.dump();
-                write(&post_path, &content).ok()?;
+                write(&article_path, &content).ok()?;
             }
 
             let response = format!(r#"<!DOCTYPE html>
@@ -300,18 +300,18 @@ fn edit(post: &str, key: &str) -> Option<String> {
         <style>{}</style>
     </head>
     <body onload="init();">
-        <script>let post = '{}';</script>
+        <script>let article = '{}';</script>
         <script>{}</script>
         <script>{}</script>
         <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
         <div id="themed">
             <div id="auth" class="hidden">
                 <p id="status">
-                    Posts can be protected with an email address.
-                    Enter your email address to protect the post.
-                    Protected posts are not automatically deleted
+                    Articles can be protected with an email address.
+                    Enter your email address to protect the article.
+                    Protected articles are not automatically deleted
                     and their edit links are short-lived. You can
-                    manage your protected posts from the
+                    manage your protected articles from the
                     <a href="/manage">Manage</a> page.
                 </p>
                 <div>
@@ -362,7 +362,7 @@ fn redirect(location: &str) -> Response<Cursor<Vec<u8>>> {
         .with_header(header)
 }
 
-fn handle_post_update(body: String) -> Option<()> {
+fn handle_article_update(body: String) -> Option<()> {
     let json = body;
     check_and_update(&json)
 }
@@ -379,7 +379,7 @@ fn send_email_code(body: String, mailer: &Mailer, create: bool) -> Option<String
             "code": "000000",
             "code-created": 0u64,
             "token": "",
-            "posts": {},
+            "articles": {},
         }.dump()
     } else {
         return None;
@@ -428,7 +428,7 @@ fn check_email_code(body: String) -> Option<String> {
     }
 }
 
-fn list_posts(body: String) -> Option<String> {
+fn list_articles(body: String) -> Option<String> {
     let token = body.get(  ..12)?;
     let email = body.get(12..  )?;
 
@@ -437,15 +437,15 @@ fn list_posts(body: String) -> Option<String> {
     let actual_token = value["token"].as_str()?;
 
     if token == actual_token {
-        let posts = &value["posts"];
+        let articles = &value["articles"];
         let mut output = String::new();
 
-        for (post_id, _) in posts.entries() {
-            let json = read_to_string(&post_path(post_id)).ok()?;
-            let post = parse(&json).ok()?;
-            let title = post["title"].as_str()?;
+        for (article_id, _) in articles.entries() {
+            let json = read_to_string(&article_path(article_id)).ok()?;
+            let article = parse(&json).ok()?;
+            let title = article["title"].as_str()?;
 
-            output += post_id;
+            output += article_id;
             output += ":";
             output += &encode(title);
             output += "\n";
@@ -458,33 +458,33 @@ fn list_posts(body: String) -> Option<String> {
     }
 }
 
-fn protect_post(body: String, post_id: &str) -> Option<String> {
+fn protect_article(body: String, article_id: &str) -> Option<String> {
     let key     = body.get(  ..12)?;
     let token   = body.get(12..24)?;
     let email   = body.get(24..)?;
 
     let mail_path = email_path(&email);
-    let post_path = post_path(&post_id);
+    let article_path = article_path(&article_id);
 
-    let post = read_to_string(&post_path).ok()?;
+    let article = read_to_string(&article_path).ok()?;
     let mail = read_to_string(&mail_path).ok()?;
-    let mut post = parse(&post).ok()?;
+    let mut article = parse(&article).ok()?;
     let mut mail = parse(&mail).ok()?;
 
-    let actual_key = post["key"].as_str()?;
+    let actual_key = article["key"].as_str()?;
     let actual_token = mail["token"].as_str()?;
 
     if token == actual_token && key == actual_key {
-        post["author"] = email.into();
-        post["key"] = JsonValue::Null;
+        article["author"] = email.into();
+        article["key"] = JsonValue::Null;
 
         let key = alphanumeric12();
-        mail["posts"][post_id] = [
+        mail["articles"][article_id] = [
             key.as_str().into(),
             JsonValue::from(now_u64()?),
         ].as_slice().into();
 
-        write(post_path, &post.dump()).ok()?;
+        write(article_path, &article.dump()).ok()?;
         write(mail_path, &mail.dump()).ok()?;
 
         Some(key)
@@ -493,7 +493,7 @@ fn protect_post(body: String, post_id: &str) -> Option<String> {
     }
 }
 
-fn get_edit_link(body: String, post: &str) -> Option<String> {
+fn get_edit_link(body: String, article: &str) -> Option<String> {
     let token   = body.get(  ..12)?;
     let email   = body.get(12..  )?;
 
@@ -502,11 +502,11 @@ fn get_edit_link(body: String, post: &str) -> Option<String> {
     let mut mail = parse(&mail).ok()?;
 
     let actual_token = mail["token"].as_str()?;
-    let owns_that_post = mail["posts"][post].is_array();
+    let owns_that_article = mail["articles"][article].is_array();
 
-    if token == actual_token && owns_that_post {
+    if token == actual_token && owns_that_article {
         let key = alphanumeric12();
-        mail["posts"][post] = [
+        mail["articles"][article] = [
             key.as_str().into(),
             JsonValue::from(now_u64()?),
         ].as_slice().into();
@@ -534,24 +534,24 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
     let response = match request.method() {
         Method::Get => match path.len() {
             2 => {
-                let post = path[0];
+                let article = path[0];
                 let key = path[1];
-                match edit(post, key) {
+                match edit(article, key) {
                     Some(body) => response(&body, "text/html", 200),
                     None => bad_request,
                 }
             },
             1 => {
-                let post = path[0];
-                if post == "new" {
-                    redirect(&new_post())
-                } else if post == "manage" {
+                let article = path[0];
+                if article == "new" {
+                    redirect(&new_article())
+                } else if article == "manage" {
                     response(&MANAGE_PAGE, "text/html", 200)
                 } else {
-                    match view(post) {
+                    match view(article) {
                         Some(body) => response(&body, "text/html", 200),
-                        None => if post == "home" {
-                            redirect(&create_post(post, INITIAL_HOMEPAGE))
+                        None => if article == "home" {
+                            redirect(&create_article(article, INITIAL_HOMEPAGE))
                         } else {
                             bad_request
                         },
@@ -562,7 +562,7 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
             _ => bad_request,
         }
         Method::Post => match path.get(0) {
-            Some(&"update") => match handle_post_update(body) {
+            Some(&"update") => match handle_article_update(body) {
                 Some(_) => response("OK", "text", 200),
                 None => bad_request,
             },
@@ -578,12 +578,12 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
                 Some(body) => response(&body, "text", 200),
                 None => bad_request,
             },
-            Some(&"list-posts") => match list_posts(body) {
+            Some(&"list-articles") => match list_articles(body) {
                 Some(body) => response(&body, "text", 200),
                 None => bad_request,
             },
             _ => match path.get(1) {
-                Some(&"protect") => match protect_post(body, path[0]) {
+                Some(&"protect") => match protect_article(body, path[0]) {
                     Some(body) => response(&body, "text", 200),
                     None => bad_request,
                 },
@@ -604,11 +604,11 @@ fn main() {
     let mut args = args().rev();
     let address = args.next().unwrap_or("".into());
     if let Some("-l") = args.next().as_ref().map(|s| s.as_str()) {
-        let posts_dir = metadata("posts");
+        let articles_dir = metadata("articles");
         let mail_dir = metadata("mail");
 
-        if posts_dir.is_err() || mail_dir.is_err() {
-            println!("Error: cannot find ./posts, ./mail or both directories");
+        if articles_dir.is_err() || mail_dir.is_err() {
+            println!("Error: cannot find ./articles, ./mail or both directories");
             println!("Please create them manually");
         }
 
