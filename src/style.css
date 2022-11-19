@@ -81,16 +81,16 @@ html, body {
         --browser-theme-bg: #111;
         --browser-theme-main: #222;
         --browser-theme-fg: #eee;
-        --opposite-theme-bg: #999;
-        --opposite-theme-main: #eee;
+        --opposite-theme-bg: #798a9c;
+        --opposite-theme-main: #fdfbff;
         --opposite-theme-fg: #333;
     }
 }
 
 @media (prefers-color-scheme: light) {
     html {
-        --browser-theme-bg: #999;
-        --browser-theme-main: #eee;
+        --browser-theme-bg: #798a9c;
+        --browser-theme-main: #fdfbff;
         --browser-theme-fg: #333;
         --opposite-theme-bg: #111;
         --opposite-theme-main: #222;
