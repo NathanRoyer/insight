@@ -50,6 +50,7 @@ const EDITOR_SCRIPT: &'static str = include_str!("editor.js");
 const MANAGER_SCRIPT: &'static str = include_str!("manager.js");
 const INITIAL_MARKDOWN: &'static str = include_str!("initial.md");
 const INITIAL_HOMEPAGE: &'static str = include_str!("initial-homepage.md");
+const DEFAULT_TITLE: &'static str = "Untitled";
 
 const ONE_MINUTE: u64 = 60;
 const FIVE_MINUTES: u64 = ONE_MINUTE * 5;
@@ -126,13 +127,11 @@ fn elapsed_seconds_since(timestamp: u64) -> Option<u64> {
     now_u64()?.checked_sub(timestamp)
 }
 
-fn check_and_update(new_json: &str) -> Option<()> {
-    let new_value = parse(&new_json).ok()?;
-    let article = new_value["article"].as_str()?;
-
+fn check_and_update(article: &str, new_json: &str) -> Option<()> {
     if article.chars().all(char::is_alphanumeric) {
         let old_json = read_to_string(article_path(article)).ok()?;
         let old_value = parse(&old_json).ok()?;
+        let new_value = parse(&new_json).ok()?;
 
         let new_value_key = new_value["key"].as_str()?;
         let old_value_key = old_value["key"].as_str()?;
@@ -143,13 +142,14 @@ fn check_and_update(new_json: &str) -> Option<()> {
         let mut clean_value = JsonValue::new_object();
         clean_value["key"] = new_value_key.into();
         clean_value["author"] = old_value["author"].clone();
-        clean_value["article"] = article.into();
+        clean_value["created"] = old_value["created"].clone();
+        clean_value["edited"] = now_u64().into();
 
         let content = new_value["content"].as_str()?;
         clean_value["content"] = content.into();
         clean_value["title"] = {
             let parser = Parser::new(&content);
-            let mut title = String::from("Untitled");
+            let mut title = String::from(DEFAULT_TITLE);
 
             for event in parser {
                 if let Event::Text(cow_str) = event {
@@ -239,8 +239,9 @@ fn create_article(article: &str, content: &str) -> String {
     let value = object!{
         "key": key.as_str(),
         "content": content,
-        "article": article,
-        "title": "Untitled",
+        "title": DEFAULT_TITLE,
+        "created": now_u64(),
+        "edited": now_u64(),
     };
 
     let _ = write(path, &value.dump());
