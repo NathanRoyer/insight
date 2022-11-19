@@ -2,9 +2,13 @@
 
 `insight` is a web server allowing you to edit markdown articles and host the rendered result publicly.
 
-Articles can be anonymous or "protected" (meaning an email address is associated to the article).
+### Features
 
-CSS media queries are used to automatically select the UI theme (light/dark), but there is also a theme switch on each page.
+- customizable homepage (it's an article as well)
+- anonymous and email-protected articles (sending emails requires easy DKIM/SPF configuration)
+- CSS queries-based light/dark theme selection
+- on-disk JSON database → easy backups
+- easily dockerized
 
 ### Setup
 
