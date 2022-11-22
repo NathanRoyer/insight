@@ -138,7 +138,7 @@ pub fn edit_template(content: &str) -> String {
         <style>{}</style>
     </head>
     <body onload="init();">
-        <script>let article = {};</script>
+        <script>let article = '{}';</script>
         <script>{}</script>
         <script>{}</script>
         <input type="checkbox" id="theme-checkbox" name="theme-checkbox">

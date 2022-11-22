@@ -4,7 +4,6 @@ use tiny_http::Response;
 use tiny_http::Method;
 use tiny_http::Header;
 
-use pulldown_cmark::CowStr;
 use pulldown_cmark::Event;
 use pulldown_cmark::Parser;
 use pulldown_cmark::Options;
@@ -157,7 +156,7 @@ fn view(article_id: &str) -> Option<String> {
     let mut body = String::new();
     html::push_html(&mut body, parser.map(|event| {
         match event {
-            Event::Html(_) => Event::Text(CowStr::Borrowed("[removed HTML]")),
+            Event::Html(html) => Event::Text(html),
             _ => event,
         }
     }));
