@@ -86,7 +86,7 @@ fn email_path(email: &str) -> PathBuf {
     let mut hasher = DefaultHasher::new();
     hasher.write(email.as_bytes());
     let hash = format!("{:x}", hasher.finish());
-    let mut buf = CONFIG.articles_dir.join(hash);
+    let mut buf = CONFIG.mail_dir.join(hash);
     buf.set_extension("json");
     buf
 }
