@@ -64,12 +64,19 @@ function protectPost() {
     });
 }
 
+function base64DecodeUnicode(encoded) {
+    return decodeURIComponent(atob(encoded).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+}
+
 function init() {
     sendEmailCode = '/send-email-code-create';
     onAuthentication = protectPost;
     commonInit();
 
     articleSlug = document.location.pathname.split('/')[1];
+    article = JSON.parse(base64DecodeUnicode(article));
 
     viewButton = element('view-button');
     markdownEntry = element('markdown');
