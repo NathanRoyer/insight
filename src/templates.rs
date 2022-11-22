@@ -175,7 +175,7 @@ pub fn edit_template(content: &str) -> String {
 </html>"#,
         SVG_FAVICON_B64.as_str(),
         STYLESHEET,
-        content,
+        encode_text(content),
         COMMON_SCRIPT,
         EDITOR_SCRIPT,
     )
