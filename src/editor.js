@@ -70,7 +70,6 @@ function init() {
     commonInit();
 
     articleSlug = document.location.pathname.split('/')[1];
-    article = JSON.parse(atob(article));
 
     viewButton = element('view-button');
     markdownEntry = element('markdown');
