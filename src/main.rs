@@ -7,9 +7,12 @@ use tiny_http::Header;
 use pulldown_cmark::Event;
 use pulldown_cmark::Parser;
 use pulldown_cmark::Options;
+use pulldown_cmark::Tag;
+use pulldown_cmark::HeadingLevel;
 use pulldown_cmark::html;
 
 use base64::encode;
+use html_escape::encode_text as escape;
 
 use json::parse;
 use json::object;
@@ -47,6 +50,7 @@ use templates::NEW_ARTICLE_PAGE;
 const INITIAL_MARKDOWN: &'static str = include_str!("initial.md");
 const INITIAL_HOMEPAGE: &'static str = include_str!("initial-homepage.md");
 const DEFAULT_TITLE: &'static str = "Untitled";
+const TOC_HEADINGS_THRESHOLD: usize = 4;
 
 const ONE_MINUTE: u64 = 60;
 const FIVE_MINUTES: u64 = ONE_MINUTE * 5;
@@ -153,15 +157,50 @@ fn view(article_id: &str) -> Option<String> {
     options.insert(Options::ENABLE_STRIKETHROUGH);
     let parser = Parser::new_ext(&markdown, options);
 
+    let header = |level| match level {
+        HeadingLevel::H1 => "h1",
+        HeadingLevel::H2 => "h2",
+        HeadingLevel::H3 => "h3",
+        HeadingLevel::H4 => "h4",
+        HeadingLevel::H5 => "h5",
+        HeadingLevel::H6 => "h6",
+    };
+
+    let mut table = String::new();
     let mut body = String::new();
+    let mut n = 0;
+    let mut reading_heading = false;
     html::push_html(&mut body, parser.map(|event| {
         match event {
             Event::Html(html) => Event::Text(html),
+            Event::Start(Tag::Heading(l, ..)) => {
+                reading_heading = true;
+                table += &format!("<{}>• ", header(l));
+                Event::Html(format!("<{} id=\"h-{}\">", header(l), n).into())
+            },
+            Event::Text(text) => {
+                if reading_heading {
+                    let title = escape(&text);
+                    table += &format!("<a href=\"#h-{}\">{}</a>", n, title);
+                    Event::Html(format!("<a href=\"#h-{}\">{} <div>🔗</div></a>", n, title).into())
+                } else {
+                    Event::Text(text)
+                }
+            },
+            Event::End(Tag::Heading(l, ..)) => {
+                n += 1;
+                reading_heading = false;
+                table += &format!("</{}>\n", header(l));
+                Event::Html(format!("</{}>", header(l)).into())
+            },
             _ => event,
         }
     }));
 
-    Some(view_template(&title, &body))
+    Some(view_template(&title, &body, match n > TOC_HEADINGS_THRESHOLD {
+        true => Some(&table),
+        false => None,
+    }))
 }
 
 fn alphanumeric12() -> String {

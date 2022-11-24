@@ -34,6 +34,7 @@ html, body {
     padding: 1em;
     border-radius: 5px;
     background-color: var(--centered-bgcolor);
+    z-index: 10;
 }
 
 #popup > div { display: flex; }
@@ -42,7 +43,8 @@ html, body {
 #popup > div > :first-child { flex-basis: 100%; }
 
 #popup:not(.hidden) + #centered > * {
-    display: none;
+    opacity: 50%;
+    pointer-events: none;
 }
 
 #theme-checkbox:not(:checked) + #themed {
@@ -129,6 +131,10 @@ body #markdown {
 
 #editor > :first-child { border-left: 1px solid grey; }
 
+#table-of-contents {
+    text-align: center;
+}
+
 .hidden { display: none !important; }
 
 button, a, textarea {
@@ -142,7 +148,38 @@ button, a, textarea {
     resize: vertical;
 }
 
+#table-of-contents:not(:target) + hr + div,
+#table-of-contents:not(:target) + hr + div + hr {
+    display: none;
+}
+
+/* Hide real title */
+#h-0 { display: none; }
+.viewer > h1:first-child { text-align: center; }
+
+#table-of-contents + hr + div > h1,
+#table-of-contents + hr + div > h2,
+#table-of-contents + hr + div > h3,
+#table-of-contents + hr + div > h4,
+#table-of-contents + hr + div > h5,
+#table-of-contents + hr + div > h6 { margin: 0; font-size: inherit; font-weight: normal; }
+
+#table-of-contents + hr + div > h2 { padding-left: 1em; }
+#table-of-contents + hr + div > h3 { padding-left: 2em; }
+#table-of-contents + hr + div > h4 { padding-left: 3em; }
+#table-of-contents + hr + div > h5 { padding-left: 4em; }
+#table-of-contents + hr + div > h6 { padding-left: 5em; }
+
+#table-of-contents a:not(:hover),
+h1 a:not(:hover),
+h2 a:not(:hover),
+h3 a:not(:hover),
+h4 a:not(:hover),
+h5 a:not(:hover),
+h6 a:not(:hover) { text-decoration: none; }
 a { color: inherit; }
+a:not(:hover) > div { display: none; }
+a:hover > div { opacity: 50%; display: inline; }
 button { cursor: pointer; }
 button:hover { background-color: grey; }
 

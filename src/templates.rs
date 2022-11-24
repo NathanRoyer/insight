@@ -1,5 +1,5 @@
 use base64::encode;
-use html_escape::encode_text;
+use html_escape::encode_text as escape;
 use lazy_static::lazy_static;
 
 const STYLESHEET: &'static str = include_str!("style.css");
@@ -25,7 +25,7 @@ lazy_static! {
     <body onload="init()">
         <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
         <div id="themed">
-            <div id="popup">
+            <div id="popup" class="manage">
                 <p id="status">
                     Articles can be protected with an email address.
                     If you have protected articles with your email address,
@@ -99,7 +99,13 @@ lazy_static! {
     );
 }
 
-pub fn view_template(title: &str, body: &str) -> String {
+pub fn view_template(title: &str, body: &str, table_of_contents: Option<&str>) -> String {
+    let class = match table_of_contents.is_some() {
+        true => "",
+        false => "hidden",
+    };
+
+    let title = escape(title);
     format!(r#"<!DOCTYPE html>
 <html>
     <head>
@@ -113,6 +119,11 @@ pub fn view_template(title: &str, body: &str) -> String {
         <input type="checkbox" id="theme-checkbox" name="theme-checkbox">
         <div id="themed">
             <div id="centered" class="viewer">
+                <h1><a href="{}centered">{}</a></h1>
+                <span id="table-of-contents" class="{}"><a href="{}table-of-contents">[Table of Contents]</a></span>
+                <hr>
+                <div>{}</div>
+                <hr>
                 {}
                 <div id="spacer"></div>
                 <p>[powered by <a href="https://lib.rs/crates/insight">insight</a>]</p>
@@ -121,8 +132,13 @@ pub fn view_template(title: &str, body: &str) -> String {
     </body>
 </html>"#,
         SVG_FAVICON_B64.as_str(),
-        encode_text(title),
+        &title,
         STYLESHEET,
+        "#",
+        &title,
+        class,
+        "#",
+        table_of_contents.unwrap_or(""),
         body,
     )
 }
