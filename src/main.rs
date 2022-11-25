@@ -26,6 +26,7 @@ use std::path::PathBuf;
 use std::fs::read_to_string;
 use std::fs::write;
 use std::fs::metadata;
+use std::fs::remove_file;
 use std::io::Cursor;
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
@@ -62,7 +63,7 @@ fn equal(left: &Option<String>, right: &str) -> bool {
     }
 }
 
-fn is_char_ok(c: char) -> bool {
+fn valid_slug_character(c: char) -> bool {
     if char::is_alphanumeric(c) || c == '-' {
         true
     } else {
@@ -73,7 +74,7 @@ fn is_char_ok(c: char) -> bool {
 fn article_path(article_id: &str) -> Option<PathBuf> {
     if equal(&CONFIG.manage, article_id)
     || equal(&CONFIG.new_article, article_id)
-    || !article_id.chars().all(is_char_ok)
+    || !article_id.chars().all(valid_slug_character)
     || article_id.chars().next() == Some('-')
     || article_id.chars().last() == Some('-')
     || article_id == "" {
@@ -294,6 +295,37 @@ fn handle_article_update(body: String, article_id: &str) -> Option<()> {
     check_and_update(&json, article_id)
 }
 
+fn delete_article(body: String, article_id: &str) -> Option<()> {
+    let key = body.as_str();
+    let path = article_path(article_id)?;
+
+    let content = read_to_string(&path).ok()?;
+    let value = parse(&content).ok()?;
+    if let Some(author) = value["author"].as_str() {
+
+        let mail_path = email_path(author);
+        let content = read_to_string(&mail_path).ok()?;
+        let mut mail = parse(&content).ok()?;
+
+        let article_key = mail["articles"][article_id][0].as_str()?;
+        let creation = mail["articles"][article_id][1].as_u64()?;
+
+        let elapsed = elapsed_seconds_since(creation)?;
+        if key != article_key || elapsed >= ONE_MINUTE {
+            return None;
+        }
+
+        mail["articles"].remove(article_id);
+        write(mail_path, &mail.dump()).ok()?;
+
+    } else if key != value["key"].as_str()? {
+        return None;
+    }
+
+    remove_file(path).ok()?;
+    Some(())
+}
+
 fn send_email_code(body: String, mailer: &Mailer, create: bool) -> Option<String> {
     let email = body;
     let path = email_path(&email);
@@ -459,13 +491,16 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
 
     let bad_request = response("Bad Request", "text", 400);
 
+    let html_mime = "text/html; charset=UTF-8";
+    let text_mime = "text/html; charset=UTF-8";
+
     let response = match request.method() {
         Method::Get => match path.len() {
             2 => {
                 let article = path[0];
                 let key = path[1];
                 match edit(article, key) {
-                    Some(body) => response(&body, "text/html", 200),
+                    Some(body) => response(&body, html_mime, 200),
                     None => bad_request,
                 }
             },
@@ -473,12 +508,12 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
                 let article = path[0];
 
                 if equal(&CONFIG.new_article, article) {
-                    response(&NEW_ARTICLE_PAGE, "text/html", 200)
+                    response(&NEW_ARTICLE_PAGE, html_mime, 200)
                 } else if equal(&CONFIG.manage, article) {
-                    response(&MANAGE_PAGE, "text/html", 200)
+                    response(&MANAGE_PAGE, html_mime, 200)
                 } else {
                     match view(article) {
-                        Some(body) => response(&body, "text/html", 200),
+                        Some(body) => response(&body, html_mime, 200),
                         None => if article == CONFIG.home {
                             let homepage = create_article(article, INITIAL_HOMEPAGE);
                             redirect(&homepage.unwrap())
@@ -493,36 +528,40 @@ fn handle_request(mut request: Request, mailer: &Mailer) {
         }
         Method::Post => match path.get(0) {
             Some(&"create") => match create_article(&body, INITIAL_MARKDOWN) {
-                Ok(body) => response(&body, "text", 200),
-                Err(body) => response(&body, "text", 400),
+                Ok(body) => response(&body, text_mime, 200),
+                Err(body) => response(&body, text_mime, 400),
             },
             Some(&"send-email-code") => match send_email_code(body, mailer, false) {
-                Some(body) => response(&body, "text", 200),
+                Some(body) => response(&body, text_mime, 200),
                 None => bad_request,
             },
             Some(&"send-email-code-create") => match send_email_code(body, mailer, true) {
-                Some(body) => response(&body, "text", 200),
+                Some(body) => response(&body, text_mime, 200),
                 None => bad_request,
             },
             Some(&"check-email-code") => match check_email_code(body) {
-                Some(body) => response(&body, "text", 200),
+                Some(body) => response(&body, text_mime, 200),
                 None => bad_request,
             },
             Some(&"list-articles") => match list_articles(body) {
-                Some(body) => response(&body, "text", 200),
+                Some(body) => response(&body, text_mime, 200),
                 None => bad_request,
             },
             _ => match path.get(1) {
                 Some(&"update") => match handle_article_update(body, path[0]) {
-                    Some(_) => response("OK", "text", 200),
+                    Some(_) => response("OK", text_mime, 200),
+                    None => bad_request,
+                },
+                Some(&"delete") => match delete_article(body, path[0]) {
+                    Some(_) => response("OK", text_mime, 200),
                     None => bad_request,
                 },
                 Some(&"protect") => match protect_article(body, path[0]) {
-                    Some(body) => response(&body, "text", 200),
+                    Some(body) => response(&body, text_mime, 200),
                     None => bad_request,
                 },
                 Some(&"get-edit-link") => match get_edit_link(body, path[0]) {
-                    Some(body) => response(&body, "text", 200),
+                    Some(body) => response(&body, text_mime, 200),
                     None => bad_request,
                 },
                 _ => bad_request,

@@ -64,6 +64,24 @@ function protectPost() {
     });
 }
 
+function onDelete() {
+    if (confirm("Delete the post?")) {
+        api_post('/' + articleSlug + '/delete', article.key, request => {
+            if (request.status == 200) {
+                let markdown = markdownEntry.value;
+                let home = () => document.location = '/';
+                if (confirm("Copy markdown to clipboard?")) {
+                    navigator.clipboard.writeText(markdown).then(home, home);
+                } else {
+                    home();
+                }
+            } else {
+                alert('Error: ' + request.responseText);
+            }
+        });
+    }
+}
+
 function base64DecodeUnicode(encoded) {
     return decodeURIComponent(atob(encoded).split('').map(function(c) {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
@@ -87,6 +105,9 @@ function init() {
     viewButton.addEventListener('click', () => {
         open('/' + articleSlug, '_blank');
     });
+
+    let deleteButton = element('delete-button');
+    deleteButton.addEventListener('click', onDelete);
 
     let protectButton = element('protect-button');
     if (article.author) protectButton.remove();
