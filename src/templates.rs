@@ -77,10 +77,11 @@ lazy_static! {
             <div id="popup">
                 <p id="status">
                     Choose the <a href="https://en.wikipedia.org/wiki/Clean_URL#Slug">slug</a> for your article.
+                    You can use characters a-z, A-Z, 1-9 and simple dashes. The slug cannot begin or end with a dash.
                 </p>
                 <div>
                     <div>
-                        <input type="text" id="article-id-field" placeholder="article slug" />
+                        <input type="text" pattern="^[a-zA-Z1-9]([a-zA-Z1-9\-]*[a-zA-Z1-9])?$" id="article-id-field" placeholder="hogwarts-corruption-report" />
                     </div>
                     <div>
                         <button id="create-button">Create</button>
@@ -183,6 +184,7 @@ pub fn edit_template(content: &str) -> String {
                 <div id="editor">
                     <button id="protect-button">Protect</button>
                     <button id="view-button">View ⬀</button>
+                    <button id="delete-button">Delete</button>
                 </div>
                 <textarea id="markdown"></textarea>
             </div>

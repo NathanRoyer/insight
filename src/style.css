@@ -20,6 +20,7 @@ html, body {
     font-family: sans-serif;
     flex-basis: 680px;
     background-color: var(--centered-bgcolor);
+    max-width: calc(100vw - 16px);
 }
 
 #popup {
