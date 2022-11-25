@@ -27,6 +27,7 @@ use std::fs::read_to_string;
 use std::fs::write;
 use std::fs::metadata;
 use std::fs::remove_file;
+use std::fs::read_dir;
 use std::io::Cursor;
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
@@ -405,11 +406,35 @@ fn list_articles(body: String) -> Option<String> {
             let article = parse(&json).ok()?;
             let title = article["title"].as_str()?;
 
+            output += "_";
             output += article_id;
             output += ":";
             output += &encode(title);
             output += "\n";
         }
+
+        if email == &CONFIG.admin_email {
+            for entry in read_dir(&CONFIG.articles_dir).ok()? {
+                let mut article_id = entry.ok()?.file_name().into_string().ok()?;
+                if article_id.ends_with(".json") {
+                    article_id.truncate(article_id.len() - 5);
+                    let path = article_path(&article_id)?;
+                    let json = read_to_string(path).ok()?;
+                    let article = parse(&json).ok()?;
+
+                    if !article["author"].is_string() {
+                        let title = article["title"].as_str()?;
+
+                        output += "!";
+                        output += &article_id;
+                        output += ":";
+                        output += &encode(title);
+                        output += "\n";
+                    }
+                }
+            }
+        }
+
         let _ = output.pop();
 
         Some(output)
@@ -453,26 +478,34 @@ fn protect_article(body: String, article_id: &str) -> Option<String> {
     }
 }
 
-fn get_edit_link(body: String, article: &str) -> Option<String> {
+fn get_edit_link(body: String, article_id: &str) -> Option<String> {
     let token   = body.get(  ..12)?;
     let email   = body.get(12..  )?;
 
+    let article_path = article_path(&article_id)?;
     let mail_path = email_path(&email);
+
+    let article = read_to_string(&article_path).ok()?;
     let mail = read_to_string(&mail_path).ok()?;
+
+    let article = parse(&article).ok()?;
     let mut mail = parse(&mail).ok()?;
 
-    let actual_token = mail["token"].as_str()?;
-    let owns_that_article = mail["articles"][article].is_array();
+    if let Some(author) = article["author"].as_str() {
+        if email == author && token == mail["token"].as_str()? {
+            let key = alphanumeric12();
+            mail["articles"][article_id] = [
+                key.as_str().into(),
+                JsonValue::from(now_u64()?),
+            ].as_slice().into();
 
-    if token == actual_token && owns_that_article {
-        let key = alphanumeric12();
-        mail["articles"][article] = [
-            key.as_str().into(),
-            JsonValue::from(now_u64()?),
-        ].as_slice().into();
-
-        write(mail_path, &mail.dump()).ok()?;
-        Some(key)
+            write(mail_path, &mail.dump()).ok()?;
+            Some(key)
+        } else {
+            None
+        }
+    } else if email == &CONFIG.admin_email {
+        Some(article["key"].as_str()?.to_string())
     } else {
         None
     }

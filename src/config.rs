@@ -20,6 +20,7 @@ pub struct Config {
     pub new_article: Option<String>,
     pub manage: Option<String>,
     pub home: String,
+    pub admin_email: String,
 }
 
 lazy_static! {
@@ -64,6 +65,7 @@ fn parse_config(path: &str) -> Result<Config, String> {
     let mail_username = try_string(&mut config_obj, "mail-username")?;
     let listen_address = try_string(&mut config_obj, "listen-address")?;
     let home = try_string(&mut config_obj, "home")?;
+    let admin_email = try_string(&mut config_obj, "admin-email")?;
 
     let new_article = match config_obj["new-article"].is_null() {
         false => Some(try_string(&mut config_obj, "new-article")?),
@@ -95,5 +97,6 @@ fn parse_config(path: &str) -> Result<Config, String> {
         new_article,
         manage,
         home,
+        admin_email,
     })
 }

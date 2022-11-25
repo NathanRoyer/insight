@@ -47,6 +47,8 @@ lazy_static! {
                 <h1>Manage your articles</h1>
                 <p id="status">Be sure to allow popups from this page.</p>
                 <ul id="article-list"></ul>
+                <h3 id="anon-article-title" class="hidden">Anonymous articles on your server:</h3>
+                <ul id="anon-article-list"></ul>
                 <button id="list-articles-button">Refresh list</button>
                 <div id="spacer"></div>
                 <p>[powered by <a href="https://lib.rs/crates/insight">insight</a>]</p>

@@ -1,4 +1,6 @@
 let articleList;
+let anonArticleList;
+let anonArticleTitle;
 
 function listPosts() {
     status.innerText = 'Listing articles...';
@@ -7,11 +9,13 @@ function listPosts() {
         if (request.status == 200) {
             status.innerText = 'Click on an article to edit in a new tab';
             articleList.innerHTML = "";
+            anonArticleList.innerHTML = "";
 
             let articles = request.responseText.split('\n');
             for (let i = 0; i < articles.length; i++) {
                 let article = articles[i].split(':');
-                let id = article[0];
+                let type_hint = article[0].substring(0, 1);
+                let id = article[0].substring(1);
                 let title = atob(article[1]);
 
                 let a = document.createElement('a');
@@ -35,7 +39,13 @@ function listPosts() {
                 li.appendChild(viewLink);
                 li.appendChild(document.createTextNode(' - '));
                 li.appendChild(editLink);
-                articleList.appendChild(li);
+
+                if (type_hint == '!') {
+                    anonArticleList.appendChild(li);
+                    anonArticleTitle.classList.remove('hidden')
+                } else {
+                    articleList.appendChild(li);
+                }
             }
         } else {
             status.innerText = request.responseText;
@@ -64,5 +74,7 @@ function init() {
     commonInit();
 
     articleList = element('article-list');
+    anonArticleList = element('anon-article-list');
+    anonArticleTitle = element('anon-article-title');
     element('list-articles-button').addEventListener('click', listPosts);
 }
