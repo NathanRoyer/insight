@@ -1,13 +1,12 @@
 [package]
 name = "insight"
-version = "1.4.0"
+version = "1.4.1"
 edition = "2021"
 authors = [ "Nathan ROYER <nathan.royer.pro@gmail.com>" ]
 description = "host, edit and publish markdown articles"
 license = "MIT"
 categories = [ "template-engine" ]
 keywords = [ "markdown" ]
-repository = "https://github.com/NathanRoyer/insight"
 readme = "README.md"
 
 [dependencies]
